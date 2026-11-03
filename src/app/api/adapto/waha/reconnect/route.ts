@@ -25,6 +25,7 @@ import { requireRole, UnauthorizedError, ForbiddenError } from '@/lib/auth/accou
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit';
 import { getT } from '@/lib/i18n/translate';
 import {
+  forcePairing,
   reconnect,
   waitForStatus,
   WahaTransportError,
@@ -32,7 +33,7 @@ import {
 
 const t = getT('Api');
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const ctx = await requireRole('admin');
 
@@ -46,7 +47,15 @@ export async function POST() {
     );
     if (!limit.success) return rateLimitResponse(limit);
 
-    const result = await reconnect();
+    // `mode: "pair"` descarta o pareamento e começa outro para exibir o QR.
+    // Separado do reconnect comum porque apaga a sessão do aparelho — é a
+    // diferença entre "religar" e "parear de novo", e a tela pergunta antes.
+    const body = await request.json().catch(() => ({}) as { mode?: string });
+    const forcingPair = body?.mode === 'pair';
+
+    const result = forcingPair
+      ? await forcePairing()
+      : await reconnect();
 
     // Depois do restart o WAHA leva alguns segundos para chegar em
     // SCAN_QR_CODE. Esperar aqui evita a tela mostrar "iniciando…" e
@@ -56,7 +65,6 @@ export async function POST() {
       result.action === 'none'
         ? await waitForStatus((s) => s !== 'STARTING', 5_000)
         : await waitForStatus((s) => s === 'SCAN_QR_CODE' || s === 'WORKING', 30_000);
-
     return NextResponse.json({
       action: result.action,
       status: finalStatus,

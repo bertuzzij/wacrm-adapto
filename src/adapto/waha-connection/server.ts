@@ -317,6 +317,36 @@ export async function reconnect(): Promise<{ action: 'start' | 'restart' | 'none
 }
 
 /**
+ * Descarta o pareamento e começa outro do zero, para o QR aparecer.
+ *
+ * Isto é `logout` + `start`, e é destrutivo por definição: o aparelho
+ * pareado é desvinculado e só volta escaneando o código. Por isso não é o
+ * que `reconnect()` faz — lá "a conexão caiu" é o gatilho, e apagar o
+ * pareamento por causa de uma queda seria pior que a queda.
+ *
+ * O caso de uso legítimo é outro: trocar o número, ou recuperar uma sessão
+ * que ficou num estado esquisito em que `restart` não resolve. Vem de uma
+ * ação explícita do admin, com confirmação na tela.
+ */
+export async function forcePairing(): Promise<{ action: 'logout_start' }> {
+  const session = wahaSession();
+  const path = `/api/sessions/${encodeURIComponent(session)}`;
+
+  // `logout` pode falhar se a sessão já estiver deslogada — nesse caso não
+  // há pareamento a descartar, e seguir para o `start` é exatamente o que
+  // queremos. Só engolimos o erro aqui, nunca no `start`: se o start falhar
+  // a tela precisa saber que ficou sem sessão.
+  try {
+    await request('POST', `${path}/logout`, { raw: false });
+  } catch {
+    // já deslogada — segue
+  }
+
+  await request('POST', `${path}/start`, { raw: false });
+  return { action: 'logout_start' };
+}
+
+/**
  * Espera a sessão sair de um estado transitório, para a tela não exibir
  * "iniciando" para sempre. Devolve o último status visto, mesmo no timeout:
  * quem chama decide se mostra "ainda iniciando" ou segue.
@@ -338,6 +368,90 @@ export async function waitForStatus(
     await new Promise((resolve) => setTimeout(resolve, 1_500));
   }
   return last;
+}
+
+/**
+ * Métricas que fazem sentido para quem acompanha a conexão.
+ *
+ * O WAHA CORE 2026.7.2 não expõe `/capping` nem `/timelock`, então as
+ * "métricas de conexão" precisam vir de dois lugares:
+ *
+ *   - do próprio WAHA: quando o WhatsApp falou com ele pela última vez
+ *     (`timestamps.activity`) e se o motor está de pé;
+ *   - do banco do CRM: o que passou por aqui nas últimas 24h e quantas
+ *     falharam. Esse é o número que responde "a conexão está funcionando?",
+ *     porque uma sessão WORKING que não entrega nada é justamente o caso
+ *     em que a pessoa abre esta tela.
+ *
+ * Tudo é contagem, nunca conteúdo — a tela não mostra mensagem de ninguém.
+ */
+export interface ConnectionMetrics {
+  /** ms epoch do último sinal de vida do WhatsApp no WAHA, se houver. */
+  lastActivityAt: number | null;
+  /** Motor conectado (GOWS conectado + gRPC pronto), quando o WAHA informa. */
+  engineConnected: boolean | null;
+  /** Mensagens recebidas nas últimas 24h (sender_type=customer). */
+  received24h: number | null;
+  /** Mensagens enviadas nas últimas 24h (sender_type=agent|bot). */
+  sent24h: number | null;
+  /** Envios que terminaram em `failed` nas últimas 24h. */
+  failed24h: number | null;
+}
+
+/** Extrai os campos de saúde do payload cru do WAHA. */
+export function parseEngineHealth(engine: unknown): { connected: boolean | null } {
+  // O WAHA aninha por motor: { gows: { connected }, grpc: { client, stream } }.
+  // Não confiamos em um único campo: se `gows.connected` vier ausente numa
+  // versão futura, `null` é mais honesto que `false` (que a tela pintaria
+  // como queda).
+  if (!engine || typeof engine !== 'object') {
+    return { connected: null };
+  }
+  const e = engine as {
+    gows?: { connected?: boolean };
+    grpc?: { client?: string; stream?: string };
+  };
+  const gows = typeof e.gows?.connected === 'boolean' ? e.gows.connected : null;
+  const grpcReady =
+    e.grpc && typeof e.grpc.client === 'string'
+      ? e.grpc.client.toUpperCase() === 'READY'
+      : null;
+
+  // GOWS é o motor que realmente fala com o WhatsApp; o gRPC é o canal com
+  // o app. Se o GOWS existe e diz que não está conectado, isso manda mais
+  // que o gRPC estar pronto — por isso ele vem primeiro.
+  const connected = gows ?? grpcReady;
+
+  return { connected };
+}
+
+/** `GET /api/sessions/{session}` já traz tudo o que o WAHA sabe. */
+export async function fetchSessionRaw(): Promise<{
+  status: string;
+  activityAt: number | null;
+  engineConnected: boolean | null;
+}> {
+  const session = wahaSession();
+  const data = await request<{
+    status?: string;
+    timestamps?: { activity?: number };
+    engine?: unknown;
+  }>('GET', `/api/sessions/${encodeURIComponent(session)}`);
+
+  const health = parseEngineHealth(data.engine);
+  const activity = data.timestamps?.activity;
+
+  return {
+    status: data.status ?? 'UNKNOWN',
+    activityAt:
+      typeof activity === 'number' && activity > 0
+        ? // O WAHA manda ms; alguns builds antigos mandavam segundos.
+          activity > 1e11
+          ? activity
+          : activity * 1000
+        : null,
+    engineConnected: health.connected,
+  };
 }
 
 /** Reexporta para as rotas não precisarem importar de dois lugares. */

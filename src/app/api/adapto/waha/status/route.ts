@@ -20,8 +20,10 @@ import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit
 import {
   fetchCapping,
   fetchSession,
+  fetchSessionRaw,
   WahaTransportError,
 } from '@/adapto/waha-connection/server';
+import { loadMessageCounts } from '@/adapto/waha-connection/metrics';
 import {
   cappingUsagePercent,
   describeConflicts,
@@ -60,6 +62,14 @@ export async function GET() {
 
     const view = describeStatus(session.status);
 
+    // Métricas: WAHA + banco, em paralelo. Uma falha em qualquer lado
+    // devolve `null` no campo, nunca derruba a resposta — a tela precisa
+    // mostrar a conexão mesmo que a contagem não venha.
+    const [raw, counts] = await Promise.all([
+      fetchSessionRaw().catch(() => null),
+      loadMessageCounts(ctx.supabase, ctx.accountId).catch(() => null),
+    ]);
+
     return NextResponse.json({
       configured: true,
       session: {
@@ -74,6 +84,13 @@ export async function GET() {
         hintKey: view.hintKey,
         canFetchQr: view.canFetchQr,
         canReconnect: view.canReconnect,
+      },
+      metrics: {
+        lastActivityAt: raw?.activityAt ?? null,
+        engineConnected: raw?.engineConnected ?? null,
+        received24h: counts?.received24h ?? null,
+        sent24h: counts?.sent24h ?? null,
+        failed24h: counts?.failed24h ?? null,
       },
       conflicts: describeConflicts({ timelock, capping }),
       cappingUsage: cappingUsagePercent(capping),

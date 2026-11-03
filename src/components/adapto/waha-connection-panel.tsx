@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Info,
   Loader2,
+  QrCode,
   RefreshCw,
   ServerCrash,
   WifiOff,
@@ -56,6 +57,13 @@ interface StatusPayload {
     canFetchQr: boolean;
     canReconnect: boolean;
   };
+  metrics?: {
+    lastActivityAt: number | null;
+    engineConnected: boolean | null;
+    received24h: number | null;
+    sent24h: number | null;
+    failed24h: number | null;
+  };
   conflicts?: Conflict[];
   cappingUsage?: number | null;
 }
@@ -73,6 +81,7 @@ export function WahaConnectionPanel() {
   const [busy, setBusy] = useState(false);
   const [qr, setQr] = useState<string | null>(null);
   const [qrError, setQrError] = useState(false);
+  const [confirmPair, setConfirmPair] = useState(false);
 
   // Guarda o timer para não deixar duas cadeias de polling rodando quando
   // o componente re-renderiza ou o usuário reconecta.
@@ -167,6 +176,37 @@ export function WahaConnectionPanel() {
         return;
       }
       toast.success(t('reconnectStarted'));
+      await load();
+    } catch {
+      toast.error(t('errorReconnect'));
+    } finally {
+      if (aliveRef.current) setBusy(false);
+    }
+  };
+
+  // Pareamento novo: destrutivo, então passa por confirmação explícita.
+  // `forcePairing` no servidor faz logout + start; a diferença para o
+  // reconnect comum é justamente descartar o aparelho já pareado.
+  const handleForcePair = async () => {
+    setConfirmPair(false);
+    setBusy(true);
+    setQr(null);
+    try {
+      const res = await fetch('/api/adapto/waha/reconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'pair' }),
+      });
+      const json = (await res.json()) as { error?: string; status?: string };
+      if (!res.ok) {
+        toast.error(
+          json.error === 'not_configured'
+            ? t('errorNotConfigured')
+            : t('errorReconnect')
+        );
+        return;
+      }
+      toast.success(t('pairStarted'));
       await load();
     } catch {
       toast.error(t('errorReconnect'));
@@ -287,6 +327,11 @@ export function WahaConnectionPanel() {
             </div>
           ) : null}
 
+          {/* Métricas: primeiro as que o WAHA informa, depois as do banco.
+              A pergunta que esta seção responde é "está funcionando agora?" —
+              status WORKING sozinho não prova que as mensagens passam. */}
+          <MetricsBlock metrics={data?.metrics} t={t} />
+
           {showConflicts ? (
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-foreground">
@@ -335,10 +380,186 @@ export function WahaConnectionPanel() {
           {!canEditSettings ? (
             <p className="text-xs text-muted-foreground">{t('adminOnlyHint')}</p>
           ) : null}
+
+          {/* Pareamento novo fica sempre acessível a admin — inclusive com a
+              sessão conectada, que é justamente quando alguém quer trocar de
+              número. Fica separado do "Reconectar" porque apaga o aparelho
+              já pareado, e um botão desses não pode parecer inofensivo. */}
+          {canEditSettings ? (
+            <div className="border-t border-border pt-4">
+              {confirmPair ? (
+                <div className="space-y-2">
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" aria-hidden />
+                    <AlertTitle>{t('pairConfirmTitle')}</AlertTitle>
+                    <AlertDescription>{t('pairConfirmDesc')}</AlertDescription>
+                  </Alert>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      onClick={handleForcePair}
+                      disabled={busy}
+                      size="sm"
+                      variant="destructive"
+                    >
+                      {busy ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                      ) : null}
+                      {t('pairConfirmYes')}
+                    </Button>
+                    <Button
+                      onClick={() => setConfirmPair(false)}
+                      disabled={busy}
+                      size="sm"
+                      variant="outline"
+                    >
+                      {t('pairConfirmNo')}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {t('pairTitle')}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{t('pairDesc')}</p>
+                  </div>
+                  <Button
+                    onClick={() => setConfirmPair(true)}
+                    disabled={busy}
+                    size="sm"
+                    variant="outline"
+                  >
+                    <QrCode className="mr-2 h-4 w-4" aria-hidden />
+                    {t('pairAction')}
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>
   );
+}
+
+/**
+ * Métricas de conexão.
+ *
+ * Duas fontes, de propósito:
+ *   - "Último sinal" e "Motor" vêm do WAHA: provam que o servidor está de pé
+ *     e falando com o WhatsApp.
+ *   - As contagens de 24h vêm do banco do CRM: provam que as mensagens
+ *     realmente atravessam o sistema.
+ *
+ * `null` nunca vira "0". "Não consegui contar" e "nada passou" são coisas
+ * diferentes, e mostrar 0 no primeiro caso assustaria sem motivo.
+ */
+function MetricsBlock({
+  metrics,
+  t,
+}: {
+  metrics?: StatusPayload['metrics'];
+  t: ReturnType<typeof useTranslations<'Settings.waha'>>;
+}) {
+  if (!metrics) return null;
+
+  const { lastActivityAt, engineConnected, received24h, sent24h, failed24h } = metrics;
+
+  // Sem nenhum dado útil não renderizamos a seção vazia.
+  const hasAnything =
+    lastActivityAt !== null ||
+    engineConnected !== null ||
+    received24h !== null ||
+    sent24h !== null ||
+    failed24h !== null;
+  if (!hasAnything) return null;
+
+  const relative = formatRelative(lastActivityAt);
+  const failedIsBad = typeof failed24h === 'number' && failed24h > 0;
+
+  return (
+    <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
+      <h3 className="text-sm font-semibold text-foreground">{t('metricsTitle')}</h3>
+
+      <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-muted-foreground">{t('metricEngine')}</dt>
+          <dd className="font-medium">
+            {engineConnected === null ? (
+              <span className="text-muted-foreground">{t('metricUnknown')}</span>
+            ) : engineConnected ? (
+              <span className="text-emerald-600">{t('metricEngineOk')}</span>
+            ) : (
+              <span className="text-amber-600">{t('metricEngineDown')}</span>
+            )}
+          </dd>
+        </div>
+
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-muted-foreground">{t('metricLastActivity')}</dt>
+          <dd className="font-medium">
+            {relative ?? <span className="text-muted-foreground">{t('metricUnknown')}</span>}
+          </dd>
+        </div>
+
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-muted-foreground">{t('metricReceived')}</dt>
+          <dd className="font-medium">
+            {received24h === null ? (
+              <span className="text-muted-foreground">{t('metricUnknown')}</span>
+            ) : (
+              t('metricMessages', { count: received24h })
+            )}
+          </dd>
+        </div>
+
+        <div className="flex items-center justify-between gap-2">
+          <dt className="text-muted-foreground">{t('metricSent')}</dt>
+          <dd className="font-medium">
+            {sent24h === null ? (
+              <span className="text-muted-foreground">{t('metricUnknown')}</span>
+            ) : (
+              t('metricMessages', { count: sent24h })
+            )}
+          </dd>
+        </div>
+
+        {failed24h !== null ? (
+          <div className="flex items-center justify-between gap-2 sm:col-span-2">
+            <dt className="text-muted-foreground">{t('metricFailed')}</dt>
+            <dd className={`font-medium ${failedIsBad ? 'text-destructive' : ''}`}>
+              {t('metricMessages', { count: failed24h })}
+            </dd>
+          </div>
+        ) : null}
+      </dl>
+
+      <p className="text-xs text-muted-foreground">{t('metricsWindow')}</p>
+    </div>
+  );
+}
+
+/**
+ * "há 2 minutos" a partir de um epoch ms.
+ *
+ * `Intl.RelativeTimeFormat` cuida do idioma (o app tem en/pt/es/ko) sem
+ * precisar de uma chave de tradução por unidade de tempo.
+ */
+function formatRelative(epochMs: number | null): string | null {
+  if (epochMs === null) return null;
+  const diffMs = Date.now() - epochMs;
+  if (!Number.isFinite(diffMs)) return null;
+
+  const diffSec = Math.round(diffMs / 1000);
+  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+
+  if (Math.abs(diffSec) < 60) return rtf.format(-diffSec, 'second');
+  const diffMin = Math.round(diffSec / 60);
+  if (Math.abs(diffMin) < 60) return rtf.format(-diffMin, 'minute');
+  const diffHour = Math.round(diffMin / 60);
+  if (Math.abs(diffHour) < 24) return rtf.format(-diffHour, 'hour');
+  return rtf.format(-Math.round(diffHour / 24), 'day');
 }
 
 function StateIcon({ state }: { state: ConnectionState }) {
