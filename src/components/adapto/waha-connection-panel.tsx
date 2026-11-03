@@ -11,6 +11,7 @@ import {
   QrCode,
   RefreshCw,
   ServerCrash,
+  Users,
   WifiOff,
 } from 'lucide-react';
 
@@ -82,6 +83,18 @@ export function WahaConnectionPanel() {
   const [qr, setQr] = useState<string | null>(null);
   const [qrError, setQrError] = useState(false);
   const [confirmPair, setConfirmPair] = useState(false);
+  // Resultado da última sincronização de contatos, para a tela relatar o
+  // que aconteceu em vez de só dizer "pronto".
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{
+    examined: number;
+    nameUpdated: number;
+    photoUpdated: number;
+    withoutPhoto: number;
+    namePreserved: number;
+    failed: number;
+    firstError: string | null;
+  } | null>(null);
 
   // Guarda o timer para não deixar duas cadeias de polling rodando quando
   // o componente re-renderiza ou o usuário reconecta.
@@ -212,6 +225,46 @@ export function WahaConnectionPanel() {
       toast.error(t('errorReconnect'));
     } finally {
       if (aliveRef.current) setBusy(false);
+    }
+  };
+
+  // Importa nome e foto dos contatos a partir do WhatsApp.
+  //
+  // Não é "atualizar no WhatsApp": a API não permite escrever o nome ou a
+  // foto de outra pessoa. O fluxo é sempre WhatsApp -> CRM.
+  const handleSyncContacts = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const res = await fetch('/api/adapto/contacts/sync', { method: 'POST' });
+      const json = (await res.json()) as {
+        error?: string;
+        examined?: number;
+        nameUpdated?: number;
+        photoUpdated?: number;
+        withoutPhoto?: number;
+        namePreserved?: number;
+        failed?: number;
+        firstError?: string | null;
+      };
+      if (!res.ok) {
+        toast.error(t('syncError'));
+        return;
+      }
+      setSyncResult({
+        examined: json.examined ?? 0,
+        nameUpdated: json.nameUpdated ?? 0,
+        photoUpdated: json.photoUpdated ?? 0,
+        withoutPhoto: json.withoutPhoto ?? 0,
+        namePreserved: json.namePreserved ?? 0,
+        failed: json.failed ?? 0,
+        firstError: json.firstError ?? null,
+      });
+      toast.success(t('syncDone'));
+    } catch {
+      toast.error(t('syncError'));
+    } finally {
+      if (aliveRef.current) setSyncing(false);
     }
   };
 
@@ -374,6 +427,56 @@ export function WahaConnectionPanel() {
               {/* A instrução que evita o pior: reiniciar não resolve
                   restrição do WhatsApp e pode atrapalhar. */}
               <p className="text-sm font-medium text-foreground">{t('conflictsNoRestart')}</p>
+            </div>
+          ) : null}
+
+          {/* Sincronização de contatos: separada do pareamento porque é a
+              outra metade do que se espera desta tela — a conexão está de
+              pé, e agora os dados dos contatos podem ser importados. */}
+          {canEditSettings ? (
+            <div className="border-t border-border pt-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">
+                    {t('syncTitle')}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{t('syncDesc')}</p>
+                </div>
+                <Button
+                  onClick={handleSyncContacts}
+                  disabled={syncing || busy}
+                  size="sm"
+                  variant="outline"
+                >
+                  {syncing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Users className="mr-2 h-4 w-4" aria-hidden />
+                  )}
+                  {syncing ? t('syncing') : t('syncAction')}
+                </Button>
+              </div>
+
+              {syncResult ? (
+                <div className="mt-3 space-y-1 rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+                  <p className="font-medium text-foreground">{t('syncResultTitle')}</p>
+                  <p>{t('syncResultExamined', { count: syncResult.examined })}</p>
+                  <p>{t('syncResultNames', { count: syncResult.nameUpdated })}</p>
+                  <p>{t('syncResultPhotos', { count: syncResult.photoUpdated })}</p>
+                  {syncResult.withoutPhoto > 0 ? (
+                    <p>{t('syncResultNoPhoto', { count: syncResult.withoutPhoto })}</p>
+                  ) : null}
+                  {syncResult.namePreserved > 0 ? (
+                    <p>{t('syncResultPreserved', { count: syncResult.namePreserved })}</p>
+                  ) : null}
+                  {syncResult.failed > 0 ? (
+                    <p className="text-destructive">
+                      {t('syncResultFailed', { count: syncResult.failed })}
+                      {syncResult.firstError ? ` — ${syncResult.firstError}` : ''}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           ) : null}
 

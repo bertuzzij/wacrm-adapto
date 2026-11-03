@@ -427,3 +427,80 @@ export async function wahaHeadMedia(
     return { mimeType: 'application/octet-stream', fileSize: null }
   }
 }
+
+// ------------------------------------------------------------
+// Profile / contact enrichment (read-only)
+//
+// The only read paths that actually work on WAHA 2026.7.2 (CORE / GOWS),
+// verified against a running instance:
+//
+//   GET /api/{session}/chats/{chatId}/picture  -> { url } | null
+//   GET /api/{session}/chats?limit=&offset=    -> [{ id, name, ... }]
+//
+// Things that do NOT work and should not be reintroduced:
+//
+//   GET /api/{session}/profile?contactId=X
+//     Accepts the parameter and returns HTTP 200, but always answers with the
+//     session's OWN profile. Using it to enrich contacts would silently write
+//     the operator's own name and photo onto every contact.
+//
+//   GET /api/{session}/contacts/{id}/picture, /profile-picture, /api/files/*
+//     All 404 on this version.
+//
+// There is no write path for another user's name or photo: the WhatsApp
+// protocol does not expose one here. "Sync" therefore means importing what
+// the contact already publishes, never setting it.
+// ------------------------------------------------------------
+
+export interface WahaChatPicture {
+  /** CDN URL, expires in roughly two days — copy the bytes, do not store it. */
+  url: string
+}
+
+/**
+ * Profile picture URL for one chat, or `null` when the contact has none.
+ *
+ * Returns null rather than throwing for a missing picture: most contacts
+ * simply do not have one, and that is not an error worth logging.
+ * A 404 means "no picture"; anything else is a real transport failure and
+ * propagates so the caller can decide to stop the run.
+ */
+export async function wahaGetChatPicture(
+  chatId: string,
+): Promise<WahaChatPicture | null> {
+  try {
+    const data = await wahaRequest<{ url?: string } | null>(
+      'GET',
+      `/api/${encodeURIComponent(wahaSession())}/chats/${encodeURIComponent(chatId)}/picture`,
+    )
+    const url = data?.url?.trim()
+    return url ? { url } : null
+  } catch (err) {
+    if (err instanceof WahaApiError && err.httpStatus === 404) return null
+    throw err
+  }
+}
+
+export interface WahaChatEntry {
+  id: string
+  name?: string
+}
+
+/**
+ * Chats known to the session, newest conversation first.
+ *
+ * Used to learn the address-book name (`name`), which is the label the
+ * operator saved for the contact — distinct from `pushname`, the name the
+ * contact chose for themselves. `contacts/all` carries only pushname.
+ */
+export async function wahaListChats(
+  limit = 100,
+  offset = 0,
+): Promise<WahaChatEntry[]> {
+  const data = await wahaRequest<WahaChatEntry[]>(
+    'GET',
+    `/api/${encodeURIComponent(wahaSession())}/chats?limit=${limit}&offset=${offset}`,
+  )
+  return Array.isArray(data) ? data : []
+}
+

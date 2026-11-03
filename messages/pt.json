@@ -2300,7 +2300,20 @@
       "metricSent": "Enviadas",
       "metricFailed": "Falharam",
       "metricUnknown": "sem dado",
-      "metricMessages": "{count, plural, =0 {nenhuma} one {# mensagem} other {# mensagens}}"
+      "metricMessages": "{count, plural, =0 {nenhuma} one {# mensagem} other {# mensagens}}",
+      "syncTitle": "Nome e foto dos contatos",
+      "syncDesc": "Importa os nomes e as fotos que seus contatos já publicam no WhatsApp. Isso apenas lê do WhatsApp: não altera o que seus contatos veem.",
+      "syncAction": "Sincronizar contatos agora",
+      "syncing": "Sincronizando…",
+      "syncDone": "Contatos sincronizados",
+      "syncError": "Não foi possível sincronizar os contatos",
+      "syncResultTitle": "Resultado da última sincronização",
+      "syncResultExamined": "{count} contato(s) verificado(s)",
+      "syncResultNames": "{count} nome(s) atualizado(s)",
+      "syncResultPhotos": "{count} foto(s) importada(s)",
+      "syncResultNoPhoto": "{count} contato(s) não têm foto no WhatsApp",
+      "syncResultPreserved": "{count} nome(s) preservado(s) (editados por você)",
+      "syncResultFailed": "{count} falha(s)"
     }
   },
   "SignupPage": {
