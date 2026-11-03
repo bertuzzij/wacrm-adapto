@@ -15,6 +15,8 @@ import {
   DollarSign,
   StickyNote,
   Plus,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -24,9 +26,13 @@ import { contactHandle } from "@/lib/whatsapp/wa-identity";
 
 interface ContactSidebarProps {
   contact: Contact | null;
+  /** Quando presente, mostra o botão de excluir a conversa. */
+  onDeleteConversation?: () => void;
+  /** Desabilita o botão enquanto a exclusão está em andamento. */
+  deleting?: boolean;
 }
 
-export function ContactSidebar({ contact }: ContactSidebarProps) {
+export function ContactSidebar({ contact, onDeleteConversation, deleting }: ContactSidebarProps) {
   const tSidebar = useTranslations("Inbox.sidebar");
   const tThread = useTranslations("Inbox.messageThread");
 
@@ -302,6 +308,34 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
               </div>
             </div>
           </div>
+
+          {/* Excluir conversa.
+              Fica no rodapé da sidebar, longe do fluxo normal de leitura,
+              porque é irreversível: apaga a conversa, as mensagens, as
+              reações e as notificações ligadas a ela. O negócio vinculado
+              NÃO é apagado — só perde o vínculo — para não destruir
+              histórico comercial por causa de uma limpeza de inbox. */}
+          {onDeleteConversation ? (
+            <div className="mt-6 border-t border-border pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+                onClick={onDeleteConversation}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-3.5 w-3.5" />
+                )}
+                {tSidebar("deleteConversation")}
+              </Button>
+              <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
+                {tSidebar("deleteConversationHint")}
+              </p>
+            </div>
+          ) : null}
         </div>
       </ScrollArea>
     </div>

@@ -330,7 +330,8 @@
   },
   "Inbox": {
     "page": {
-      "whatsappNotConnected": "WhatsApp®이 연결되어 있지 않습니다. 설정으로 이동해 계정을 연결하세요."
+      "whatsappNotConnected": "WhatsApp®이 연결되어 있지 않습니다. 설정으로 이동해 계정을 연결하세요.",
+      "deleteConversationConfirm": "이 대화와 모든 메시지를 삭제할까요? 되돌릴 수 없습니다. 연결된 거래는 유지되며 연결만 해제됩니다."
     },
     "conversationList": {
       "searchPlaceholder": "대화 검색...",
@@ -518,7 +519,9 @@
       "deals": "딜",
       "noTags": "태그 없음",
       "noDeals": "딜 없음",
-      "addNotePlaceholder": "메모 추가..."
+      "addNotePlaceholder": "메모 추가...",
+      "deleteConversation": "대화 삭제",
+      "deleteConversationHint": "메시지가 영구적으로 삭제됩니다"
     },
     "aiBanner": {
       "pausedTitle": "이 대화에서 AI 어시스턴트가 일시 중지됨",

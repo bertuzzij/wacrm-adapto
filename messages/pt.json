@@ -330,7 +330,8 @@
   },
   "Inbox": {
     "page": {
-      "whatsappNotConnected": "O WhatsApp® não está conectado. Vá em Configurações para conectar sua conta."
+      "whatsappNotConnected": "O WhatsApp® não está conectado. Vá em Configurações para conectar sua conta.",
+      "deleteConversationConfirm": "Excluir esta conversa e todas as mensagens? Não é possível desfazer. Negócios vinculados serão mantidos, apenas desvinculados."
     },
     "conversationList": {
       "searchPlaceholder": "Buscar conversas...",
@@ -518,7 +519,9 @@
       "deals": "Negócios",
       "noTags": "Sem tags",
       "noDeals": "Sem negócios",
-      "addNotePlaceholder": "Adicionar uma nota..."
+      "addNotePlaceholder": "Adicionar uma nota...",
+      "deleteConversation": "Excluir conversa",
+      "deleteConversationHint": "Remove as mensagens permanentemente"
     },
     "aiBanner": {
       "pausedTitle": "O assistente de IA está pausado aqui",

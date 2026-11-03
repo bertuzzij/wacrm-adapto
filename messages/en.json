@@ -330,7 +330,8 @@
   },
   "Inbox": {
     "page": {
-      "whatsappNotConnected": "WhatsApp® is not connected. Go to Settings to connect your account."
+      "whatsappNotConnected": "WhatsApp® is not connected. Go to Settings to connect your account.",
+      "deleteConversationConfirm": "Delete this conversation and all its messages? This cannot be undone. Linked deals will be kept, only unlinked."
     },
     "conversationList": {
       "searchPlaceholder": "Search conversations...",
@@ -518,7 +519,9 @@
       "deals": "Deals",
       "noTags": "No tags",
       "noDeals": "No deals",
-      "addNotePlaceholder": "Add a note..."
+      "addNotePlaceholder": "Add a note...",
+      "deleteConversation": "Delete conversation",
+      "deleteConversationHint": "Permanently removes the messages"
     },
     "aiBanner": {
       "pausedTitle": "AI assistant is paused here",

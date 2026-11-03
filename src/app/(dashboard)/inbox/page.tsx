@@ -500,6 +500,41 @@ function InboxPageInner() {
     router.replace("/inbox", { scroll: false });
   }, [router]);
 
+  // Exclui a conversa aberta.
+  //
+  // Confirmação explícita antes de qualquer chamada: apaga mensagens,
+  // reações e notificações, e não há desfazer. O negócio vinculado é
+  // preservado pela rota (perde o vínculo, não o histórico).
+  //
+  // Ao terminar, tira a conversa da lista na hora em vez de esperar o
+  // evento de realtime — sem isso a linha ficaria visível até o DELETE
+  // propagar, e clicar nela abriria uma conversa que não existe mais.
+  const [deletingConversation, setDeletingConversation] = useState(false);
+  const handleDeleteConversation = useCallback(async () => {
+    if (!activeConversation) return;
+    const ok = window.confirm(t("deleteConversationConfirm"));
+    if (!ok) return;
+
+    const targetId = activeConversation.id;
+    setDeletingConversation(true);
+    try {
+      const res = await fetch(`/api/adapto/conversations/${targetId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.error("Failed to delete conversation:", data?.error);
+        return;
+      }
+      setConversations((prev) => prev.filter((c) => c.id !== targetId));
+      handleCloseConversation();
+    } catch (err) {
+      console.error("Failed to delete conversation:", err);
+    } finally {
+      setDeletingConversation(false);
+    }
+  }, [activeConversation, handleCloseConversation, t]);
+
 
   const handleMessagesLoaded = useCallback(
     (loaded: Message[], conversationId: string) => {
@@ -638,7 +673,13 @@ function InboxPageInner() {
             toggle — which is itself desktop-only — never affects it. */}
         {contactPanelOpen && (
           <div className="hidden lg:block">
-            <ContactSidebar contact={activeContact} />
+            <ContactSidebar
+              contact={activeContact}
+              onDeleteConversation={
+                activeConversation ? handleDeleteConversation : undefined
+              }
+              deleting={deletingConversation}
+            />
           </div>
         )}
       </div>
