@@ -27,6 +27,7 @@ import {
   phoneNumberBelongsToWaba,
 } from '@/lib/whatsapp/waba-pairing'
 import { encrypt, decrypt } from '@/lib/whatsapp/encryption'
+import { isWahaMode } from '@/lib/whatsapp/waha'
 import { resolveVerifyTokenForSave } from '@/lib/whatsapp/verify-token'
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit'
 import { getT } from '@/lib/i18n/translate'
@@ -108,6 +109,14 @@ function metaFailure(err: unknown, step: MetaConnectStep, ctx: MetaErrorContext)
  */
 export async function GET() {
   try {
+    // O modo de transporte é decidido no servidor (WAHA_URL presente) e o
+    // cliente não tem como saber: a variável não é NEXT_PUBLIC_. Sem isso a
+    // tela da Meta aparece editável em instalações que falam por WAHA, onde
+    // salvar sempre falha — porque a validação de WABA vai à Graph API de
+    // verdade. Vai em toda resposta, inclusive nas de erro, para a tela
+    // poder mostrar o aviso antes de qualquer outra coisa.
+    const mode: 'waha' | 'meta' = isWahaMode() ? 'waha' : 'meta'
+
     const supabase = await createClient()
 
     const {
@@ -124,6 +133,7 @@ export async function GET() {
       return NextResponse.json(
         {
           connected: false,
+          mode,
           reason: 'no_account',
           message: t('common.profileNotLinked'),
         },
@@ -140,7 +150,7 @@ export async function GET() {
     if (configError) {
       console.error('Error fetching whatsapp_config:', configError)
       return NextResponse.json(
-        { connected: false, reason: 'db_error', message: t('whatsappConfig.fetchFailed') },
+        { connected: false, mode, reason: 'db_error', message: t('whatsappConfig.fetchFailed') },
         { status: 200 }
       )
     }
@@ -149,6 +159,7 @@ export async function GET() {
       return NextResponse.json(
         {
           connected: false,
+          mode,
           reason: 'no_config',
           message: t('whatsappConfig.noConfig'),
         },
@@ -166,6 +177,7 @@ export async function GET() {
       return NextResponse.json(
         {
           connected: false,
+          mode,
           reason: 'token_corrupted',
           needs_reset: true,
           message:
@@ -191,6 +203,7 @@ export async function GET() {
       return NextResponse.json(
         {
           connected: false,
+          mode,
           reason: 'meta_api_error',
           message: explained.summary,
           meta: metaErrorPayload(explained),
@@ -232,13 +245,14 @@ export async function GET() {
 
     return NextResponse.json({
       connected: true,
+      mode,
       phone_info: phoneInfo,
       waba_subscription: wabaSubscription,
     })
   } catch (error) {
     console.error('Error in WhatsApp config GET:', error)
     return NextResponse.json(
-      { connected: false, reason: 'unknown', message: t('common.internalServerError') },
+      { connected: false, mode: isWahaMode() ? 'waha' : 'meta', reason: 'unknown', message: t('common.internalServerError') },
       { status: 500 }
     )
   }

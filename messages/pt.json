@@ -1875,7 +1875,7 @@
       "notLive": "inativo",
       "apiCredentialsTitle": "Credenciais da API",
       "apiCredentialsDesc": "Informe suas credenciais da API do WhatsApp Business da Meta.",
-      "phoneNumberId": "Phone Number ID",
+      "phoneNumberId": "ID do número de telefone",
       "wabaId": "ID da conta do WhatsApp Business",
       "accessToken": "Token de acesso permanente",
       "accessTokenPlaceholder": "Informe seu token de acesso",
@@ -1949,13 +1949,16 @@
       "lastSaveFailed": "O último salvamento falhou",
       "metaErrorStep": "Etapa",
       "metaErrorCode": "Código de erro da Meta",
-      "metaErrorTrace": "Trace ID",
+      "metaErrorTrace": "ID de rastreio",
       "metaErrorMessage": "Resposta da Meta",
       "metaErrorDetailsHint": "Cite estes detalhes ao contatar o suporte da Meta.",
       "phoneNumberIdNotNumeric": "O Phone Number ID deve conter apenas dígitos. Copie o id numérico em Meta → WhatsApp → Configuração da API, não o número de telefone em si.",
       "wabaIdNotNumeric": "O ID da conta do WhatsApp Business deve conter apenas dígitos. Copie-o em Meta → WhatsApp → Configuração da API.",
       "wabaSubscribed": "A conta do WhatsApp Business está inscrita neste app — os webhooks de entrada podem ser entregues.",
-      "wabaNotSubscribed": "A conta do WhatsApp Business não está inscrita neste app, então a Meta não entregará webhooks de entrada. Informe novamente o token de acesso e salve de novo para inscrevê-la."
+      "wabaNotSubscribed": "A conta do WhatsApp Business não está inscrita neste app, então a Meta não entregará webhooks de entrada. Informe novamente o token de acesso e salve de novo para inscrevê-la.",
+      "wahaModeTitle": "Esta tela não se aplica à sua conexão",
+      "wahaModeDesc": "Esta instalação envia e recebe WhatsApp pelo WAHA, não pela API da Meta. Os campos abaixo vêm de um registro interno e não podem ser salvos: validá-los consulta a Meta, que não é o que o seu número usa.",
+      "wahaModeLink": "Ir para a tela de conexão do WAHA"
     },
     "sections": {
       "overview": "Visão geral",

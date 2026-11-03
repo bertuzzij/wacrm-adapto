@@ -1875,7 +1875,7 @@
       "notLive": "not live",
       "apiCredentialsTitle": "API Credentials",
       "apiCredentialsDesc": "Enter your Meta WhatsApp Business API credentials.",
-      "phoneNumberId": "Phone Number ID",
+      "phoneNumberId": "Phone number ID",
       "wabaId": "WhatsApp Business Account ID",
       "accessToken": "Permanent Access Token",
       "accessTokenPlaceholder": "Enter your access token",
@@ -1955,7 +1955,10 @@
       "phoneNumberIdNotNumeric": "Phone Number ID must contain only digits. Copy the numeric id from Meta → WhatsApp → API Setup, not the phone number itself.",
       "wabaIdNotNumeric": "WhatsApp Business Account ID must contain only digits. Copy it from Meta → WhatsApp → API Setup.",
       "wabaSubscribed": "The WhatsApp Business Account is subscribed to this app — inbound webhooks can be delivered.",
-      "wabaNotSubscribed": "The WhatsApp Business Account is not subscribed to this app, so Meta will not deliver inbound webhooks. Re-enter the access token and save again to subscribe it."
+      "wabaNotSubscribed": "The WhatsApp Business Account is not subscribed to this app, so Meta will not deliver inbound webhooks. Re-enter the access token and save again to subscribe it.",
+      "wahaModeTitle": "This screen does not apply to your connection",
+      "wahaModeDesc": "This installation sends and receives WhatsApp through WAHA, not through the Meta API. The fields below come from an internal record and cannot be saved: validating them contacts Meta, which is not what your number uses.",
+      "wahaModeLink": "Go to the WAHA connection screen"
     },
     "sections": {
       "overview": "Overview",

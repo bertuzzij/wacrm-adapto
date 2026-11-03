@@ -1875,7 +1875,7 @@
       "notLive": "inactivo",
       "apiCredentialsTitle": "Credenciales de la API",
       "apiCredentialsDesc": "Ingresa tus credenciales de la API de WhatsApp Business de Meta.",
-      "phoneNumberId": "Phone Number ID",
+      "phoneNumberId": "ID del número de teléfono",
       "wabaId": "ID de la cuenta de WhatsApp Business",
       "accessToken": "Token de acceso permanente",
       "accessTokenPlaceholder": "Ingresa tu token de acceso",
@@ -1949,13 +1949,16 @@
       "lastSaveFailed": "El último guardado falló",
       "metaErrorStep": "Paso",
       "metaErrorCode": "Código de error de Meta",
-      "metaErrorTrace": "Trace ID",
+      "metaErrorTrace": "ID de rastreo",
       "metaErrorMessage": "Respuesta de Meta",
       "metaErrorDetailsHint": "Cita estos detalles al contactar al soporte de Meta.",
       "phoneNumberIdNotNumeric": "El Phone Number ID debe contener solo dígitos. Copia el id numérico desde Meta → WhatsApp → Configuración de la API, no el número de teléfono en sí.",
       "wabaIdNotNumeric": "El ID de la cuenta de WhatsApp Business debe contener solo dígitos. Cópialo desde Meta → WhatsApp → Configuración de la API.",
       "wabaSubscribed": "La cuenta de WhatsApp Business está suscrita a esta app: los webhooks entrantes pueden entregarse.",
-      "wabaNotSubscribed": "La cuenta de WhatsApp Business no está suscrita a esta app, así que Meta no entregará webhooks entrantes. Vuelve a ingresar el token de acceso y guarda de nuevo para suscribirla."
+      "wabaNotSubscribed": "La cuenta de WhatsApp Business no está suscrita a esta app, así que Meta no entregará webhooks entrantes. Vuelve a ingresar el token de acceso y guarda de nuevo para suscribirla.",
+      "wahaModeTitle": "Esta pantalla no se aplica a tu conexión",
+      "wahaModeDesc": "Esta instalación envía y recibe WhatsApp por WAHA, no por la API de Meta. Los campos de abajo provienen de un registro interno y no se pueden guardar: validarlos consulta a Meta, que no es lo que usa tu número.",
+      "wahaModeLink": "Ir a la pantalla de conexión de WAHA"
     },
     "sections": {
       "overview": "Resumen",

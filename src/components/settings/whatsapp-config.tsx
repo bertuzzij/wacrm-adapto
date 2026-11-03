@@ -13,7 +13,9 @@ import {
   Zap,
   AlertTriangle,
   RotateCcw,
+  Info,
 } from 'lucide-react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { useTranslations } from 'next-intl';
@@ -90,6 +92,9 @@ export function WhatsAppConfig() {
   const [statusMeta, setStatusMeta] = useState<MetaErrorMeta | null>(null);
   const [saveFailure, setSaveFailure] = useState<MetaFailure | null>(null);
   const [wabaSubscription, setWabaSubscription] = useState<WabaSubscription | null>(null);
+  // 'meta' | 'waha', decidido pelo servidor (WAHA_URL). Usado só para o
+  // aviso de que esta tela não se aplica em instalações WAHA.
+  const [mode, setMode] = useState<'meta' | 'waha'>('meta');
   // Guards against re-hydrating the form when the load effect below
   // re-runs for reasons unrelated to actually switching accounts —
   // e.g. Supabase's onAuthStateChange fires a token refresh (new
@@ -194,6 +199,10 @@ export function WhatsAppConfig() {
           const res = await fetch('/api/whatsapp/config', { method: 'GET' });
           const payload = await res.json();
 
+          if (payload.mode === 'waha' || payload.mode === 'meta') {
+            setMode(payload.mode);
+          }
+
           if (payload.connected) {
             setConnectionStatus('connected');
             setResetReason(null);
@@ -212,6 +221,19 @@ export function WhatsAppConfig() {
           setConnectionStatus('disconnected');
         }
       } else {
+        // Sem config salva, a chamada acima não acontece — mas o aviso de
+        // modo WAHA precisa aparecer de qualquer forma, então perguntamos
+        // mesmo assim. Barato: é um GET que já retorna `mode: 'waha'` antes
+        // de qualquer consulta ao banco.
+        try {
+          const res = await fetch('/api/whatsapp/config', { method: 'GET' });
+          const payload = await res.json();
+          if (payload.mode === 'waha' || payload.mode === 'meta') {
+            setMode(payload.mode);
+          }
+        } catch {
+          // Silencioso: sem essa informação a tela só não mostra o aviso.
+        }
         setConnectionStatus('disconnected');
         setResetReason(null);
         setStatusMessage('');
@@ -545,6 +567,32 @@ export function WhatsAppConfig() {
         title={t("title")}
         description={t("description")}
       />
+
+      {/* Aviso de modo WAHA.
+          Esta tela fala com a Graph API da Meta: `verifyPhoneNumber` até tem
+          um branch WAHA, mas `listWabaPhoneNumbers` não tem — salvar aqui
+          chama a Meta de verdade e falha. Em vez de deixar um formulário
+          editável que não pode funcionar, dizemos onde fica a tela certa.
+          Fica no topo, antes de qualquer campo, para ninguém digitar antes
+          de ler. */}
+      {mode === 'waha' ? (
+        <Alert className="mb-6" data-testid="waha-mode-notice">
+          <Info className="h-4 w-4" aria-hidden />
+          <AlertTitle>{t('wahaModeTitle')}</AlertTitle>
+          <AlertDescription>
+            {t('wahaModeDesc')}
+            <span className="mt-2 block">
+              <Link
+                href="/settings?tab=waha"
+                className="font-medium text-primary underline underline-offset-3 hover:no-underline"
+              >
+                {t('wahaModeLink')}
+              </Link>
+            </span>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
       {/* Main config form */}
       <div className="space-y-6">
