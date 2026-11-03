@@ -15,6 +15,16 @@
  * Reminder: WAHA is not endorsed by WhatsApp. Use it for testing.
  */
 
+import {
+  buttonsAsList,
+  interactiveStrategies,
+  parseInteractiveMode,
+  pollPayloadFor,
+  type WahaInteractiveMode,
+} from '@/adapto/waha-interactive/strategy'
+
+export type { WahaInteractiveMode }
+
 export function isWahaMode(): boolean {
   return Boolean(process.env.WAHA_URL?.trim())
 }
@@ -186,20 +196,26 @@ function guessMimeType(link: string, kind: string): string {
 // ------------------------------------------------------------
 
 /**
- * How buttons and lists are delivered over WAHA (`WAHA_INTERACTIVE_MODE`):
- *   poll (default)  WhatsApp poll; the vote arrives as a `poll.vote` event
- *   buttons         native /api/sendButtons + /api/sendList (WAHA marks these
- *                   as unreliable/deprecated; depends on the engine)
- *   text            numbered text menu; "1" or the option title is the answer
- * Native sends fall back to the text menu when WAHA rejects them. Every
- * answer is mapped back to the original button/row id by the
- * /api/whatsapp/waha-webhook bridge, so flows advance in all modes.
+ * How buttons and lists are delivered over WAHA (`WAHA_INTERACTIVE_MODE`).
+ *
+ *   list (default)  native /api/sendList; a button payload is sent as a
+ *                   one-section list, because GOWS answers 501 to
+ *                   /api/sendButtons. The recipient sees the same
+ *                   "Ver opções" button either way.
+ *   buttons         same as `list` — kept so existing deployments that
+ *                   already set this value keep working.
+ *   poll            WhatsApp poll; the vote arrives as a `poll.vote` event.
+ *                   Flattens sections into a single question.
+ *   text            numbered text menu; "1" or the option title is the answer.
+ *
+ * Every mode falls back towards `text`, which always works. Every answer is
+ * mapped back to the original button/row id by the /api/whatsapp/waha-webhook
+ * bridge, so flows advance in all modes.
+ *
+ * The strategy table lives in src/adapto/waha-interactive/strategy.ts.
  */
-export type WahaInteractiveMode = 'poll' | 'buttons' | 'text'
-
 export function wahaInteractiveMode(): WahaInteractiveMode {
-  const raw = process.env.WAHA_INTERACTIVE_MODE?.trim().toLowerCase()
-  return raw === 'buttons' || raw === 'text' ? raw : 'poll'
+  return parseInteractiveMode(process.env.WAHA_INTERACTIVE_MODE)
 }
 
 export interface WahaOption {
@@ -237,28 +253,41 @@ async function sendInteractiveWithFallback(
   groups: WahaGroup[],
   native: () => Promise<unknown>,
 ): Promise<{ messageId: string }> {
-  const mode = wahaInteractiveMode()
-  if (mode !== 'text') {
+  const strategies = interactiveStrategies(wahaInteractiveMode())
+  let lastError: unknown = null
+
+  for (const strategy of strategies) {
+    // `text` nunca falha por motivo de API: é um envio de texto comum.
+    if (strategy === 'text') break
+
     try {
-      const data =
-        mode === 'poll'
-          ? await wahaRequest('POST', '/api/sendPoll', {
-              session: wahaSession(),
-              chatId: toChatId(base.to),
-              poll: {
-                name: [base.headerText, base.bodyText].filter(Boolean).join('\n').slice(0, 250),
-                options: groups.flatMap((g) => g.options.map((o) => o.title)),
-                multipleAnswers: false,
-              },
-              ...(base.replyTo ? { reply_to: base.replyTo } : {}),
-            })
-          : await native()
+      if (strategy === 'native') {
+        const data = await native()
+        return { messageId: extractMessageId(data) }
+      }
+
+      // strategy === 'poll'
+      const poll = pollPayloadFor(base.headerText, base.bodyText, groups)
+      if (!poll) {
+        // Sem opções não existe enquete válida; segue para o texto.
+        continue
+      }
+      const data = await wahaRequest('POST', '/api/sendPoll', {
+        session: wahaSession(),
+        chatId: toChatId(base.to),
+        poll: { name: poll.name, options: poll.options, multipleAnswers: false },
+        ...(base.replyTo ? { reply_to: base.replyTo } : {}),
+      })
       return { messageId: extractMessageId(data) }
     } catch (err) {
       if (!(err instanceof WahaApiError)) throw err
-      console.warn(`[waha] ${mode} send failed, falling back to a text menu:`, err.message)
+      lastError = err
+      console.warn(`[waha] ${strategy} send failed, trying the next strategy:`, err.message)
     }
   }
+
+  // Último recurso: menu numerado em texto. Funciona em qualquer motor.
+  void lastError
   return wahaSendText({
     to: base.to,
     text: buildTextMenu(base, groups),
@@ -269,17 +298,39 @@ async function sendInteractiveWithFallback(
 export function wahaSendButtons(
   args: WahaInteractiveBase & { buttons: WahaOption[] },
 ): Promise<{ messageId: string }> {
-  return sendInteractiveWithFallback(args, [{ options: args.buttons }], () =>
-    wahaRequest('POST', '/api/sendButtons', {
-      session: wahaSession(),
-      chatId: toChatId(args.to),
-      ...(args.headerText ? { header: args.headerText } : {}),
-      body: args.bodyText,
-      ...(args.footerText ? { footer: args.footerText } : {}),
-      buttons: args.buttons.map((b) => ({ type: 'reply', id: b.id, text: b.title })),
-      ...(args.replyTo ? { reply_to: args.replyTo } : {}),
-    }),
-  )
+  return sendInteractiveWithFallback(args, [{ options: args.buttons }], async () => {
+    try {
+      return await wahaRequest('POST', '/api/sendButtons', {
+        session: wahaSession(),
+        chatId: toChatId(args.to),
+        ...(args.headerText ? { header: args.headerText } : {}),
+        body: args.bodyText,
+        ...(args.footerText ? { footer: args.footerText } : {}),
+        buttons: args.buttons.map((b) => ({ type: 'reply', id: b.id, text: b.title })),
+        ...(args.replyTo ? { reply_to: args.replyTo } : {}),
+      })
+    } catch (err) {
+      // GOWS responde 501 aqui: botões nativos não existem nesse motor.
+      // Em vez de degradar para enquete, reenvia como lista de uma seção —
+      // o cliente vê o mesmo botão "Ver opções" e escolhe a opção.
+      if (!(err instanceof WahaApiError)) throw err
+      const asList = buttonsAsList(args.buttons)
+      if (!asList) throw err
+      console.warn('[waha] sendButtons refused, sending a one-section list instead:', err.message)
+      return wahaRequest('POST', '/api/sendList', {
+        session: wahaSession(),
+        chatId: toChatId(args.to),
+        message: {
+          title: args.headerText ?? args.bodyText.slice(0, 60),
+          description: args.bodyText,
+          footer: args.footerText ?? '',
+          button: asList.buttonLabel,
+          sections: [{ title: 'Options', rows: asList.sections[0].rows.map((r) => ({ title: r.title, rowId: r.id })) }],
+        },
+        ...(args.replyTo ? { reply_to: args.replyTo } : {}),
+      })
+    }
+  })
 }
 
 export function wahaSendList(
