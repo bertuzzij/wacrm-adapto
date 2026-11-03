@@ -5,7 +5,14 @@
 # ---------------------------------------------------------------
 FROM node:22-alpine AS deps
 WORKDIR /app
+# `npm ci` runs the root package's "prepare" lifecycle script, which is
+# `node scripts/install-hooks.mjs`. Only package.json and the lockfile
+# exist at this point, so the script would be missing and npm would fail
+# the whole install. The script no-ops without a .git directory, so
+# copying just that one file is enough — and it keeps the dependency
+# layer cacheable, since scripts/ changes far less often than the source.
 COPY package.json package-lock.json ./
+COPY scripts/install-hooks.mjs ./scripts/install-hooks.mjs
 RUN npm ci
 
 # ---------------------------------------------------------------
