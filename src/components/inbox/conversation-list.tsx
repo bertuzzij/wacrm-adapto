@@ -9,7 +9,12 @@ import {
 } from "@/lib/inbox/conversations";
 import { applyInboxFilter, type InboxFilter } from "@/lib/inbox/inbox-filters";
 import { cn } from "@/lib/utils";
-import type { Conversation, ConversationStatus, Tag } from "@/types";
+import {
+  STATUS_DOT_COLORS,
+  shouldShowStatusDot,
+  statusLabelKey,
+} from "@/adapto/inbox/conversation-status";
+import type { Conversation, Tag } from "@/types";
 import { Search, ChevronDown, X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useTranslations } from "next-intl";
@@ -38,11 +43,12 @@ interface ConversationListProps {
   initialFilter?: InboxFilter;
 }
 
-const STATUS_COLORS: Record<ConversationStatus, string> = {
-  open: "bg-primary",
-  pending: "bg-amber-500",
-  closed: "bg-muted-foreground",
-};
+// A bolinha ao lado do horário é o STATUS da conversa, não o "não lido".
+// A regra de quando desenhá-la vive em
+// src/adapto/inbox/conversation-status.ts, com testes — `open` não desenha
+// nada porque é o estado normal, e o ponto verde em toda conversa fazia
+// uma conversa já lida parecer não lida.
+const STATUS_COLORS = STATUS_DOT_COLORS;
 
 
 export function ConversationList({
@@ -492,13 +498,17 @@ function ConversationItem({
                 {conversation.unread_count}
               </span>
             )}
-            <span
-              className={cn(
-                "h-2 w-2 rounded-full",
-                STATUS_COLORS[conversation.status]
-              )}
-              title={conversation.status}
-            />
+            {shouldShowStatusDot(conversation.status) && (
+              <span
+                className={cn(
+                  "h-2 w-2 rounded-full",
+                  STATUS_COLORS[conversation.status]
+                )}
+                title={t(statusLabelKey(conversation.status))}
+                aria-label={t(statusLabelKey(conversation.status))}
+                role="img"
+              />
+            )}
           </div>
         </div>
       </div>

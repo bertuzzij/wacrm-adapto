@@ -331,7 +331,10 @@
   "Inbox": {
     "page": {
       "whatsappNotConnected": "WhatsApp® no está conectado. Ve a Configuración para conectar tu cuenta.",
-      "deleteConversationConfirm": "¿Eliminar esta conversación y todos sus mensajes? No se puede deshacer. Los negocios vinculados se conservarán, solo se desvincularán."
+      "deleteConversationConfirm": "¿Eliminar esta conversación y todos sus mensajes? No se puede deshacer. Los negocios vinculados se conservarán, solo se desvincularán.",
+      "newMessageToast": "Nuevo mensaje de {name}",
+      "newMessageOpen": "Abrir",
+      "newMessageGenericSender": "un cliente"
     },
     "conversationList": {
       "searchPlaceholder": "Buscar conversaciones...",
@@ -349,7 +352,12 @@
       "clearAll": "Limpiar todo",
       "noConversations": "No se encontraron conversaciones",
       "noMessagesYet": "Aún no hay mensajes",
-      "unknown": "Desconocido"
+      "unknown": "Desconocido",
+      "status": {
+        "open": "Abierta",
+        "pending": "Pendiente",
+        "closed": "Cerrada"
+      }
     },
     "messageThread": {
       "backToConversations": "Volver a las conversaciones",
@@ -2480,7 +2488,8 @@
     "rowDescriptionPlaceholder": "Descripción (opcional)",
     "addRow": "Agregar fila",
     "addSection": "Agregar sección",
-    "defaultListButton": "Menú"
+    "defaultListButton": "Menú",
+    "sameModelNotice": "Esta conexión de WhatsApp no admite botones de respuesta nativos, así que \"Botones\" se entrega como una lista con una sola sección. El cliente ve el mismo botón \"Ver opciones\" — solo cambia el número de toques."
   },
   "DashboardShell": {
     "loading": "Cargando..."

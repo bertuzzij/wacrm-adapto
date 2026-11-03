@@ -331,7 +331,10 @@
   "Inbox": {
     "page": {
       "whatsappNotConnected": "WhatsApp®이 연결되어 있지 않습니다. 설정으로 이동해 계정을 연결하세요.",
-      "deleteConversationConfirm": "이 대화와 모든 메시지를 삭제할까요? 되돌릴 수 없습니다. 연결된 거래는 유지되며 연결만 해제됩니다."
+      "deleteConversationConfirm": "이 대화와 모든 메시지를 삭제할까요? 되돌릴 수 없습니다. 연결된 거래는 유지되며 연결만 해제됩니다.",
+      "newMessageToast": "{name}님의 새 메시지",
+      "newMessageOpen": "열기",
+      "newMessageGenericSender": "고객"
     },
     "conversationList": {
       "searchPlaceholder": "대화 검색...",
@@ -349,7 +352,12 @@
       "clearAll": "모두 지우기",
       "noConversations": "대화를 찾을 수 없습니다",
       "noMessagesYet": "아직 메시지가 없습니다",
-      "unknown": "알 수 없음"
+      "unknown": "알 수 없음",
+      "status": {
+        "open": "열림",
+        "pending": "대기 중",
+        "closed": "닫힘"
+      }
     },
     "messageThread": {
       "backToConversations": "대화 목록으로 돌아가기",
@@ -2480,7 +2488,8 @@
     "rowDescriptionPlaceholder": "설명 (선택)",
     "addRow": "행 추가",
     "addSection": "섹션 추가",
-    "defaultListButton": "메뉴"
+    "defaultListButton": "메뉴",
+    "sameModelNotice": "이 WhatsApp 연결은 네이티브 응답 버튼을 지원하지 않으므로 \"버튼\"은 단일 섹션 목록으로 전송됩니다. 고객은 동일한 \"옵션 보기\" 버튼을 보게 되며, 탭 횟수만 다릅니다."
   },
   "DashboardShell": {
     "loading": "불러오는 중..."

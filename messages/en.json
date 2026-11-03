@@ -331,7 +331,10 @@
   "Inbox": {
     "page": {
       "whatsappNotConnected": "WhatsApp® is not connected. Go to Settings to connect your account.",
-      "deleteConversationConfirm": "Delete this conversation and all its messages? This cannot be undone. Linked deals will be kept, only unlinked."
+      "deleteConversationConfirm": "Delete this conversation and all its messages? This cannot be undone. Linked deals will be kept, only unlinked.",
+      "newMessageToast": "New message from {name}",
+      "newMessageOpen": "Open",
+      "newMessageGenericSender": "a customer"
     },
     "conversationList": {
       "searchPlaceholder": "Search conversations...",
@@ -349,7 +352,12 @@
       "clearAll": "Clear all",
       "noConversations": "No conversations found",
       "noMessagesYet": "No messages yet",
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "status": {
+        "open": "Open",
+        "pending": "Pending",
+        "closed": "Closed"
+      }
     },
     "messageThread": {
       "backToConversations": "Back to conversations",
@@ -2480,7 +2488,8 @@
     "rowDescriptionPlaceholder": "Description (optional)",
     "addRow": "Add row",
     "addSection": "Add section",
-    "defaultListButton": "Menu"
+    "defaultListButton": "Menu",
+    "sameModelNotice": "This WhatsApp connection does not support native reply buttons, so \"Buttons\" is delivered as a list with a single section. The customer sees the same \"See options\" button — only the number of taps differs."
   },
   "DashboardShell": {
     "loading": "Loading..."

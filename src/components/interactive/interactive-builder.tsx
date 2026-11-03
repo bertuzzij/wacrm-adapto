@@ -115,6 +115,16 @@ export function InteractiveBuilder({
             />
           </div>
 
+          {/* Por que os dois tipos chegam parecidos no celular.
+              O motor GOWS recusa /api/sendButtons com HTTP 501, então um
+              "botão" é entregue como lista de uma seção: o contato vê o
+              mesmo botão "Ver opções". Sem esta nota o agente acha que
+              escolheu errado, porque o modelo no builder e o resultado no
+              WhatsApp não batem. */}
+          <p className="rounded-md bg-muted/60 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+            {t("sameModelNotice")}
+          </p>
+
           <Field label={t("body")} counter={`${value.body.length}/${INTERACTIVE_LIMITS.bodyMaxLength}`}>
             <Textarea
               value={value.body}

@@ -127,6 +127,34 @@ function InboxPageInner() {
     knownConvIdsRef.current = next;
   }, [conversations]);
 
+  // Leitura síncrona da lista dentro do handler de realtime (mesmo motivo
+  // de knownConvIdsRef: o handler é memoizado e não pode depender de
+  // `conversations` sem recriar o canal a cada mensagem).
+  const conversationsRef = useRef<Conversation[]>([]);
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
+
+  // Mensagens recebidas desde que a aba perdeu o foco. Alimenta o título
+  // "(3) AdaptoConect" e zera quando o usuário volta para a aba, que é o
+  // momento em que ele efetivamente vê os avisos.
+  const pendingUnreadRef = useRef(0);
+  const baseTitleRef = useRef<string>("");
+  useEffect(() => {
+    baseTitleRef.current = document.title;
+    const onFocus = () => {
+      pendingUnreadRef.current = 0;
+      document.title = baseTitleRef.current;
+    };
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      // Ao sair do inbox o título não pode ficar preso com a contagem de
+      // uma tela que não está mais aberta.
+      document.title = baseTitleRef.current;
+    };
+  }, []);
+
   // Pull the conversation row with its `contact` joined and merge it
   // into state. Needed because Supabase Realtime payloads only carry the
   // row's own columns — a brand-new conversation arrives without a
@@ -262,6 +290,44 @@ function InboxPageInner() {
           // converge state when it arrives.
           hydrateConversation(newMsg.conversation_id);
         }
+
+        // ---- Aviso de mensagem recebida -------------------------------
+        // Só para mensagem de cliente. O eco das nossas próprias mensagens
+        // também chega como INSERT (o webhook grava as enviadas), e avisar
+        // "nova mensagem" para algo que o próprio agente acabou de enviar
+        // seria ruído.
+        //
+        // Também não avisa quando a conversa já está aberta na tela: o
+        // agente está olhando para ela, o texto já apareceu no thread.
+        const fromCustomer = newMsg.sender_type === "customer";
+        const isOpenOnScreen =
+          activeConversation?.id === newMsg.conversation_id;
+        const isOtherConv = !isOpenOnScreen;
+
+        if (fromCustomer && isOtherConv) {
+          // 1) Toast clicável: leva direto para a conversa.
+          const quem =
+            conversationsRef.current.find(
+              (c) => c.id === newMsg.conversation_id
+            )?.contact?.name ?? t("newMessageGenericSender");
+
+          toast(t("newMessageToast", { name: quem }), {
+            description: (newMsg.content_text ?? "").slice(0, 90),
+            action: {
+              label: t("newMessageOpen"),
+              onClick: () => {
+                router.push(`/inbox?c=${newMsg.conversation_id}`, {
+                  scroll: false,
+                });
+              },
+            },
+          });
+
+          // 2) Título da aba com a contagem, para quem está com o CRM em
+          //    outra aba do navegador.
+          pendingUnreadRef.current += 1;
+          document.title = `(${pendingUnreadRef.current}) ${baseTitleRef.current}`;
+        }
       }
 
       if (event.eventType === "UPDATE") {
@@ -271,7 +337,7 @@ function InboxPageInner() {
         );
       }
     },
-    [activeConversation, hydrateConversation]
+    [activeConversation, hydrateConversation, router, t]
   );
 
   // Handle realtime conversation events
