@@ -14,9 +14,15 @@ import activeMessages from '@app-messages';
 
 type Catalogue = Record<string, unknown>;
 
+// Espelha DEFAULT_APP_LOCALE de next.config.ts e src/i18n/request.ts.
+// Este é o caminho das mensagens de erro das rotas de API e dos
+// validadores compartilhados — se ficasse em inglês aqui, a tela em
+// português mostraria erro de validação em inglês.
+const DEFAULT_APP_LOCALE = 'pt';
+
 function loadCatalogue(): { locale: string; messages: Catalogue } {
   const env = process.env.NEXT_PUBLIC_APP_LOCALE ?? '';
-  const locale = ['en', 'pt', 'es', 'ko'].includes(env) ? env : 'en';
+  const locale = ['en', 'pt', 'es', 'ko'].includes(env) ? env : DEFAULT_APP_LOCALE;
   return { locale, messages: activeMessages as Catalogue };
 }
 

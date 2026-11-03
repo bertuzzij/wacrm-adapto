@@ -478,61 +478,60 @@ function MetricsBlock({
   const relative = formatRelative(lastActivityAt);
   const failedIsBad = typeof failed24h === 'number' && failed24h > 0;
 
+  // Cada métrica é um bloco com rótulo em cima e valor embaixo.
+  //
+  // A versão anterior usava `justify-between` dentro de uma grade de duas
+  // colunas: o rótulo de uma métrica encostava no valor da anterior
+  // ("connected Last signal há 2 horas" na mesma linha), porque a largura
+  // de cada par variava. Empilhar rótulo e valor alinha tudo por
+  // construção, independente do tamanho do texto traduzido.
+  const items: { label: string; value: React.ReactNode; wide?: boolean }[] = [];
+
+  if (engineConnected !== null) {
+    items.push({
+      label: t('metricEngine'),
+      value: engineConnected ? (
+        <span className="text-emerald-600">{t('metricEngineOk')}</span>
+      ) : (
+        <span className="text-amber-600">{t('metricEngineDown')}</span>
+      ),
+    });
+  }
+
+  if (relative) {
+    items.push({ label: t('metricLastActivity'), value: relative });
+  }
+
+  if (received24h !== null) {
+    items.push({ label: t('metricReceived'), value: t('metricMessages', { count: received24h }) });
+  }
+
+  if (sent24h !== null) {
+    items.push({ label: t('metricSent'), value: t('metricMessages', { count: sent24h }) });
+  }
+
+  if (failed24h !== null) {
+    items.push({
+      label: t('metricFailed'),
+      value: (
+        <span className={failedIsBad ? 'text-destructive' : undefined}>
+          {t('metricMessages', { count: failed24h })}
+        </span>
+      ),
+    });
+  }
+
   return (
     <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
       <h3 className="text-sm font-semibold text-foreground">{t('metricsTitle')}</h3>
 
-      <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2">
-        <div className="flex items-center justify-between gap-2">
-          <dt className="text-muted-foreground">{t('metricEngine')}</dt>
-          <dd className="font-medium">
-            {engineConnected === null ? (
-              <span className="text-muted-foreground">{t('metricUnknown')}</span>
-            ) : engineConnected ? (
-              <span className="text-emerald-600">{t('metricEngineOk')}</span>
-            ) : (
-              <span className="text-amber-600">{t('metricEngineDown')}</span>
-            )}
-          </dd>
-        </div>
-
-        <div className="flex items-center justify-between gap-2">
-          <dt className="text-muted-foreground">{t('metricLastActivity')}</dt>
-          <dd className="font-medium">
-            {relative ?? <span className="text-muted-foreground">{t('metricUnknown')}</span>}
-          </dd>
-        </div>
-
-        <div className="flex items-center justify-between gap-2">
-          <dt className="text-muted-foreground">{t('metricReceived')}</dt>
-          <dd className="font-medium">
-            {received24h === null ? (
-              <span className="text-muted-foreground">{t('metricUnknown')}</span>
-            ) : (
-              t('metricMessages', { count: received24h })
-            )}
-          </dd>
-        </div>
-
-        <div className="flex items-center justify-between gap-2">
-          <dt className="text-muted-foreground">{t('metricSent')}</dt>
-          <dd className="font-medium">
-            {sent24h === null ? (
-              <span className="text-muted-foreground">{t('metricUnknown')}</span>
-            ) : (
-              t('metricMessages', { count: sent24h })
-            )}
-          </dd>
-        </div>
-
-        {failed24h !== null ? (
-          <div className="flex items-center justify-between gap-2 sm:col-span-2">
-            <dt className="text-muted-foreground">{t('metricFailed')}</dt>
-            <dd className={`font-medium ${failedIsBad ? 'text-destructive' : ''}`}>
-              {t('metricMessages', { count: failed24h })}
-            </dd>
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
+        {items.map((item) => (
+          <div key={item.label} className="min-w-0">
+            <dt className="text-xs text-muted-foreground">{item.label}</dt>
+            <dd className="mt-0.5 truncate font-medium text-foreground">{item.value}</dd>
           </div>
-        ) : null}
+        ))}
       </dl>
 
       <p className="text-xs text-muted-foreground">{t('metricsWindow')}</p>

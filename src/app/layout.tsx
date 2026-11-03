@@ -6,6 +6,7 @@ import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { ThemedToaster } from "@/components/themed-toaster";
+import { APP_NAME, APP_TITLE_TEMPLATE } from "@/adapto/brand";
 import {
   DEFAULT_MODE,
   DEFAULT_THEME,
@@ -30,8 +31,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const metadata: Metadata = {
   title: {
-    default: "wacrm",
-    template: "%s — wacrm",
+    default: APP_NAME,
+    template: APP_TITLE_TEMPLATE,
   },
   robots: {
     index: false,

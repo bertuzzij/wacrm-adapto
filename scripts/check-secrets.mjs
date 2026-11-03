@@ -162,10 +162,25 @@ for (const file of files) {
   }
 
   // Layer 2: high-confidence shapes.
+  //
+  // Linhas comentadas são ignoradas aqui. `.env.local.example` documenta o
+  // formato com exemplos comentados (`#`), e código documenta o mesmo com
+  // `//`. Um exemplo em comentário nunca é lido por nenhum processo, então
+  // não vaza nada — e sinalizá-lo treina a pessoa a usar --no-verify, que é
+  // o pior resultado possível para um hook desses.
+  //
+  // A Layer 1 acima continua olhando o arquivo inteiro, comentário
+  // incluído: um valor real colado num comentário ("# o token era abc...")
+  // ainda é um vazamento, e continua bloqueando.
+  const scannable = content
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*(#|;|\/\/)/.test(line))
+    .join('\n')
+
   for (const { name, re } of PATTERNS) {
     re.lastIndex = 0
     let match
-    while ((match = re.exec(content)) !== null) {
+    while ((match = re.exec(scannable)) !== null) {
       const captured = match[1] ?? match[0]
       if (isPlaceholder(captured.trim())) continue
       problems.push({

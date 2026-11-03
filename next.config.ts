@@ -63,9 +63,21 @@ const SECURITY_HEADERS = [
   },
 ] as const;
 
-const APP_LOCALE = ["en", "pt", "es", "ko"].includes(process.env.NEXT_PUBLIC_APP_LOCALE ?? "")
+// Idioma da instalação, fixado em build time: vira o alias `@app-messages`,
+// ou seja, só um dicionário entra no bundle.
+//
+// O padrão é `pt` neste fork. Não é preferência estética: sem
+// NEXT_PUBLIC_APP_LOCALE no ambiente (o caso do `docker build`, em que
+// `.env*` está no .dockerignore) o padrão é o que ganha — e um padrão em
+// inglês fazia a instância subir em inglês mesmo com o .env.local dizendo
+// `pt`. Quem quiser outro idioma passa o build-arg.
+const DEFAULT_APP_LOCALE = "pt";
+
+const APP_LOCALE = ["en", "pt", "es", "ko"].includes(
+  process.env.NEXT_PUBLIC_APP_LOCALE ?? ""
+)
   ? (process.env.NEXT_PUBLIC_APP_LOCALE as string)
-  : "en";
+  : DEFAULT_APP_LOCALE;
 
 const nextConfig: NextConfig = {
   turbopack: {
