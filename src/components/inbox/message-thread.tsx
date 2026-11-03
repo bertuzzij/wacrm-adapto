@@ -76,6 +76,27 @@ import {
 
 const MESSAGE_PAGE_SIZE = 200;
 
+/**
+ * Avisa o servidor que a conversa foi lida — o que, em modo WAHA, dispara o
+ * `sendSeen` e faz o contato parar de ver "não lida" (e o tique azul
+ * aparecer para ele).
+ *
+ * "Dispara e esquece" de propósito: o badge do CRM já zerou localmente e no
+ * banco, então uma falha aqui não pode virar erro visível. Se a rede cair,
+ * a próxima vez que a conversa for aberta tenta de novo.
+ *
+ * Sem `catch` ruidoso: um erro no console a cada conversa aberta sem
+ * conexão poluiria o log sem ação possível.
+ */
+function notifyConversationRead(conversationId: string): void {
+  void fetch(`/api/adapto/conversations/${conversationId}/read`, {
+    method: "POST",
+    keepalive: true,
+  }).catch(() => {
+    /* best-effort — ver comentário acima */
+  });
+}
+
 interface ReplyDraft {
   id: string;
   authorLabel: string;
@@ -559,6 +580,22 @@ export function MessageThread({
         if (error) console.error("Failed to reset unread_count:", error);
       });
   }, [conversationId, hasUnread]);
+
+  // Avisa o WhatsApp (tique azul) SEMPRE que uma conversa é aberta.
+  //
+  // Separado do efeito acima de propósito: aquele só roda quando
+  // `hasUnread > 0`, e há casos reais em que o contador já está zerado no
+  // banco mas o WhatsApp nunca foi avisado — conversa lida no celular,
+  // `sendSeen` que falhou antes, ou mensagens que chegaram enquanto o
+  // navegador estava fechado. Naqueles, `hasUnread` é falso e o contato
+  // ficaria com "não lida" para sempre.
+  //
+  // Depende só de `conversationId`, então dispara uma vez por conversa
+  // aberta — não a cada mensagem que chega.
+  useEffect(() => {
+    if (!conversationId) return;
+    notifyConversationRead(conversationId);
+  }, [conversationId]);
 
   // Auto-scroll to bottom on new messages
   useLayoutEffect(() => {

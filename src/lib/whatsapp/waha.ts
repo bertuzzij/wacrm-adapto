@@ -428,6 +428,34 @@ export async function wahaHeadMedia(
   }
 }
 
+/**
+ * Marca um chat como lido no WhatsApp (o contato deixa de ver "não lido").
+ *
+ * Endpoint: `POST /api/sendSeen` com `{ session, chatId }` — não é
+ * `/api/{session}/sendSeen` (404 nesta versão). Sem `chatId` o servidor
+ * responde 500 com `Cannot read properties of undefined (reading
+ * 'includes')`, que não diz nada sobre o parâmetro faltando; por isso a
+ * validação é feita aqui antes.
+ *
+ * Resposta 201 traz `{ ids: [...] }` com as mensagens marcadas.
+ *
+ * Não confundir com `wahaTyping`, que já dispara `sendSeen` mas só é
+ * chamado pela auto-resposta da IA. Quem lê manualmente nunca passava por
+ * lá — era esse o motivo de o contato continuar vendo a conversa como
+ * não lida.
+ */
+export async function wahaSendSeen(
+  chatId: string,
+): Promise<{ ids: string[] }> {
+  const cleaned = chatId.trim();
+  if (!cleaned) throw new WahaApiError('chatId vazio', 400);
+  const data = await wahaRequest<{ ids?: string[] }>('POST', '/api/sendSeen', {
+    session: wahaSession(),
+    chatId: cleaned,
+  });
+  return { ids: Array.isArray(data?.ids) ? data.ids : [] };
+}
+
 // ------------------------------------------------------------
 // Profile / contact enrichment (read-only)
 //
