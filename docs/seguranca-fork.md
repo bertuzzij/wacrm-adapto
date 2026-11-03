@@ -77,13 +77,22 @@ git stash list                 # confira o que ficou guardado antes de publicar
 
 ```bash
 git fetch upstream
-git checkout main && git merge upstream/main   # mantém o espelho atualizado
-git checkout adapto && git merge main          # traz para o seu branch de trabalho
-git push origin adapto
+git merge upstream/main     # traz as correções do projeto original
+git push origin main
 ```
 
-`main` fica limpo como espelho do upstream; o trabalho vive em `adapto`. Assim
-`git diff upstream/main...adapto` mostra exatamente o que é seu.
+O `upstream` é somente leitura: o push foi desativado de propósito
+(`git remote set-url --push upstream DISABLED…`), para que um `git push` distraído
+nunca tente escrever no repositório de outra pessoa. Para publicar, use sempre
+`git push origin`.
+
+`main` carrega o upstream **mais** os seus commits. Para ver só o que é seu:
+
+```bash
+git fetch upstream
+git log --oneline upstream/main..main      # seus commits
+git diff --stat upstream/main...main       # seus arquivos alterados
+```
 
 Dois ajustes que economizam tempo em sincronizações repetidas:
 
@@ -91,6 +100,9 @@ Dois ajustes que economizam tempo em sincronizações repetidas:
 git config rerere.enabled true
 git config merge.conflictstyle zdiff3
 ```
+
+`rerere` reaproveita resoluções de conflito anteriores — em um fork que sincroniza
+com frequência, isso vale mais que qualquer outra configuração do Git.
 
 ## Estrutura das suas mudanças
 
