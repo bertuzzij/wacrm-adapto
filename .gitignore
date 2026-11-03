@@ -45,3 +45,8 @@ next-env.d.ts
 
 # supabase
 supabase/.temp/
+
+# generated locally: contains the WAHA webhook token
+.waha-webhook-url.txt
+# generated locally: previous WAHA webhook list, written before each re-register
+.waha-webhooks.backup-*.json

@@ -1,6 +1,30 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+/**
+ * Webhook routes that authenticate themselves and must bypass the
+ * session cookie check below.
+ *
+ *   /api/whatsapp/webhook       — Meta Cloud API; verifies x-hub-signature-256
+ *                                 against META_APP_SECRET.
+ *   /api/whatsapp/waha-webhook  — WAHA; verifies ?token / x-webhook-token
+ *                                 against WAHA_WEBHOOK_SECRET.
+ *
+ * Precise matching (exact or prefix + '/') rather than `includes()`, so a
+ * future route with "webhook" anywhere in its name can't inherit the
+ * exemption by accident.
+ */
+const PUBLIC_WEBHOOK_PATHS = [
+  '/api/whatsapp/webhook',
+  '/api/whatsapp/waha-webhook',
+] as const
+
+function isPublicWebhookPath(pathname: string): boolean {
+  return PUBLIC_WEBHOOK_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`)
+  )
+}
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -80,8 +104,16 @@ export async function middleware(request: NextRequest) {
   }
 
   // API routes that need auth (not webhooks)
+  //
+  // The webhook exemption used to be a substring check for '/webhook',
+  // which silently missed '/api/whatsapp/waha-webhook' (the substring
+  // '/webhook' does not occur in '/waha-webhook'). WAHA mode therefore
+  // answered 401 to every event — before the route's own token check
+  // ever ran. Listing the paths explicitly keeps this honest: a new
+  // webhook route that self-authenticates has to be added here, and the
+  // tests in middleware.test.ts fail until it is.
   if (!user && request.nextUrl.pathname.startsWith('/api/whatsapp/') &&
-      !request.nextUrl.pathname.includes('/webhook')) {
+      !isPublicWebhookPath(request.nextUrl.pathname)) {
     return withRefreshedCookies(
       NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     )

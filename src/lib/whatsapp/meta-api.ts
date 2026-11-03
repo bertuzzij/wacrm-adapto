@@ -11,6 +11,21 @@
 
 import { isBusinessScopedUserId } from './wa-identity'
 import { getT } from '@/lib/i18n/translate'
+import {
+  isWahaMode,
+  wahaGetSession,
+  wahaSendText,
+  wahaSendMedia,
+  wahaSendReaction,
+  wahaSendButtons,
+  wahaSendList,
+  wahaTyping,
+  isWahaMediaId,
+  decodeWahaMediaUrl,
+  wahaHeadMedia,
+  wahaDownload,
+} from './waha'
+import { renderTemplateBody } from './template-body'
 
 const ti = getT('Validation.interactive')
 
@@ -133,6 +148,17 @@ export async function verifyPhoneNumber(
   args: VerifyPhoneNumberArgs
 ): Promise<MetaPhoneInfo> {
   const { phoneNumberId, accessToken } = args
+  if (isWahaMode()) {
+    const session = await wahaGetSession()
+    if (session.status !== 'WORKING') {
+      throw new Error(`WAHA session "${session.name}" is ${session.status}, expected WORKING.`)
+    }
+    return {
+      id: phoneNumberId,
+      display_phone_number: phoneNumberId,
+      verified_name: session.me?.pushName ?? 'WAHA',
+    }
+  }
   const url = `${META_API_BASE}/${phoneNumberId}?fields=id,display_phone_number,verified_name,quality_rating`
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -147,6 +173,10 @@ export async function getPhoneNumberHealth(
   args: VerifyPhoneNumberArgs
 ): Promise<MetaPhoneHealth> {
   const { phoneNumberId, accessToken } = args
+  if (isWahaMode()) {
+    await wahaGetSession()
+    return { id: phoneNumberId, display_phone_number: phoneNumberId }
+  }
   const headers = { Authorization: `Bearer ${accessToken}` }
   const [response, limitResponse] = await Promise.all([
     fetch(`${META_API_BASE}/${phoneNumberId}?fields=id,display_phone_number,quality_rating`, { headers }),
@@ -395,6 +425,9 @@ export async function sendTextMessage(
   args: SendTextMessageArgs
 ): Promise<MetaSendResult> {
   const { phoneNumberId, accessToken, to, text, contextMessageId } = args
+  if (isWahaMode()) {
+    return wahaSendText({ to, text, replyTo: contextMessageId })
+  }
   const url = `${META_API_BASE}/${phoneNumberId}/messages`
   const body: Record<string, unknown> = {
     messaging_product: 'whatsapp',
@@ -453,6 +486,9 @@ export async function sendMediaMessage(
 ): Promise<MetaSendResult> {
   const { phoneNumberId, accessToken, to, kind, link, caption, filename, contextMessageId } = args
   if (!link) throw new Error('sendMediaMessage requires a link.')
+  if (isWahaMode()) {
+    return wahaSendMedia({ to, kind, link, caption, filename, replyTo: contextMessageId })
+  }
   const url = `${META_API_BASE}/${phoneNumberId}/messages`
 
   // Audio accepts neither caption nor filename per Meta's spec — adding
@@ -547,6 +583,14 @@ export async function sendTemplateMessage(
     messageParams,
     contextMessageId,
   } = args
+  if (isWahaMode()) {
+    // No template approval on WAHA: send the rendered body as plain text.
+    const bodyParams = messageParams?.body ?? params ?? []
+    const text = template?.body_text
+      ? renderTemplateBody(template.body_text, bodyParams)
+      : [templateName, ...bodyParams].join(' ')
+    return wahaSendText({ to, text, replyTo: contextMessageId })
+  }
   const url = `${META_API_BASE}/${phoneNumberId}/messages`
 
   const templatePayload: Record<string, unknown> = {
@@ -840,6 +884,9 @@ export async function sendReactionMessage(
   args: SendReactionMessageArgs
 ): Promise<MetaSendResult> {
   const { phoneNumberId, accessToken, to, targetMessageId, emoji } = args
+  if (isWahaMode()) {
+    return wahaSendReaction({ targetMessageId, emoji })
+  }
   const url = `${META_API_BASE}/${phoneNumberId}/messages`
   const response = await fetch(url, {
     method: 'POST',
@@ -891,6 +938,10 @@ export async function sendTypingIndicator(
   args: SendTypingIndicatorArgs
 ): Promise<void> {
   const { phoneNumberId, accessToken, messageId } = args
+  if (isWahaMode()) {
+    await wahaTyping({ messageId })
+    return
+  }
   const url = `${META_API_BASE}/${phoneNumberId}/messages`
   const response = await fetch(url, {
     method: 'POST',
@@ -1000,6 +1051,17 @@ export async function sendInteractiveButtons(
         ti('buttonTitleTooLong', { title: btn.title, max: INTERACTIVE_LIMITS.buttonTitleMaxLength })
       )
     }
+  }
+
+  if (isWahaMode()) {
+    return wahaSendButtons({
+      to,
+      bodyText,
+      headerText,
+      footerText,
+      replyTo: contextMessageId,
+      buttons,
+    })
   }
 
   const interactive: Record<string, unknown> = {
@@ -1128,6 +1190,18 @@ export async function sendInteractiveList(
     }
   }
 
+  if (isWahaMode()) {
+    return wahaSendList({
+      to,
+      bodyText,
+      buttonLabel,
+      headerText,
+      footerText,
+      replyTo: contextMessageId,
+      sections,
+    })
+  }
+
   const interactive: Record<string, unknown> = {
     type: 'list',
     body: { text: bodyText },
@@ -1218,6 +1292,11 @@ export async function getMediaUrl(
   args: GetMediaUrlArgs
 ): Promise<{ url: string; mimeType: string; fileSize: number | null }> {
   const { mediaId, accessToken } = args
+  if (isWahaMediaId(mediaId)) {
+    const url = decodeWahaMediaUrl(mediaId)
+    const head = await wahaHeadMedia(url)
+    return { url, mimeType: head.mimeType, fileSize: head.fileSize }
+  }
   const response = await fetch(`${META_API_BASE}/${mediaId}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
@@ -1249,6 +1328,9 @@ export async function downloadMedia(
   args: DownloadMediaArgs
 ): Promise<{ buffer: Buffer; contentType: string }> {
   const { downloadUrl, accessToken } = args
+  if (isWahaMode() && downloadUrl.startsWith(process.env.WAHA_URL!.trim().replace(/\/+$/, ''))) {
+    return wahaDownload(downloadUrl)
+  }
   const response = await fetch(downloadUrl, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })

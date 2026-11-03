@@ -22,9 +22,11 @@ services:
     # healthcheck below.
     environment:
       PORT: 3000
-    # Host side only — HOST_PORT=8080 publishes the app on :8080.
+    # Host side only — HOST_PORT publishes the app on another port (e.g.
+    # 3100) and HOST_BIND restricts it to one interface (e.g. 127.0.0.1
+    # when a reverse proxy on the same machine is the only client).
     ports:
-      - '${HOST_PORT:-3000}:3000'
+      - '${HOST_BIND:-0.0.0.0}:${HOST_PORT:-3000}:3000'
     restart: unless-stopped
     healthcheck:
       test:

@@ -1,0 +1,429 @@
+/**
+ * WAHA (WhatsApp HTTP API, unofficial) transport.
+ *
+ * Activated when `WAHA_URL` is set. In that mode the helpers in
+ * `meta-api.ts` send through WAHA instead of Meta's Graph API, and
+ * `/api/whatsapp/waha-webhook` translates WAHA events into the Meta
+ * webhook shape so the rest of the CRM (inbox, automations, flows)
+ * works unchanged.
+ *
+ * Env:
+ *   WAHA_URL      base URL of the WAHA server, e.g. https://waha.example.com
+ *   WAHA_API_KEY  value for the X-Api-Key header (optional if WAHA has no key)
+ *   WAHA_SESSION  session name (default: "default")
+ *
+ * Reminder: WAHA is not endorsed by WhatsApp. Use it for testing.
+ */
+
+export function isWahaMode(): boolean {
+  return Boolean(process.env.WAHA_URL?.trim())
+}
+
+export function wahaSession(): string {
+  return process.env.WAHA_SESSION?.trim() || 'default'
+}
+
+export function wahaBaseUrl(): string {
+  return (process.env.WAHA_URL ?? '').trim().replace(/\/+$/, '')
+}
+
+export class WahaApiError extends Error {
+  readonly httpStatus: number
+  constructor(message: string, httpStatus: number) {
+    super(message)
+    this.name = 'WahaApiError'
+    this.httpStatus = httpStatus
+  }
+}
+
+function wahaHeaders(json = true): Record<string, string> {
+  const headers: Record<string, string> = {}
+  if (json) headers['Content-Type'] = 'application/json'
+  const key = process.env.WAHA_API_KEY?.trim()
+  if (key) headers['X-Api-Key'] = key
+  return headers
+}
+
+async function wahaRequest<T>(
+  method: 'GET' | 'POST' | 'PUT',
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  const response = await fetch(`${wahaBaseUrl()}${path}`, {
+    method,
+    headers: wahaHeaders(body !== undefined),
+    body: body === undefined ? undefined : JSON.stringify(body),
+  })
+  if (!response.ok) {
+    let detail = ''
+    try {
+      detail = (await response.text()).slice(0, 300)
+    } catch {
+      // ignore
+    }
+    throw new WahaApiError(
+      `WAHA error ${response.status}${detail ? `: ${detail}` : ''}`,
+      response.status,
+    )
+  }
+  const text = await response.text()
+  return (text ? JSON.parse(text) : {}) as T
+}
+
+// ------------------------------------------------------------
+// Id helpers
+// ------------------------------------------------------------
+
+/** `5511999999999` | `+55 11 99999-9999` | `5511999999999@c.us` → `5511999999999@c.us`. */
+export function toChatId(to: string): string {
+  const trimmed = to.trim()
+  if (trimmed.includes('@')) return trimmed
+  return `${trimmed.replace(/\D/g, '')}@c.us`
+}
+
+/** `5511999999999@c.us` → `5511999999999`. */
+export function chatIdToPhone(chatId: string): string {
+  return chatId.split('@')[0].replace(/\D/g, '')
+}
+
+/** WAHA returns the message id as a string (new) or `{ _serialized }` (old). */
+function extractMessageId(data: unknown): string {
+  const d = data as {
+    id?: string | { _serialized?: string }
+    _data?: { id?: { _serialized?: string } }
+  }
+  if (typeof d?.id === 'string') return d.id
+  if (d?.id && typeof d.id === 'object' && d.id._serialized) return d.id._serialized
+  const nested = d?._data?.id?._serialized
+  if (nested) return nested
+  throw new WahaApiError('WAHA did not return a message id', 502)
+}
+
+// ------------------------------------------------------------
+// Sending
+// ------------------------------------------------------------
+
+export async function wahaSendText(args: {
+  to: string
+  text: string
+  replyTo?: string
+}): Promise<{ messageId: string }> {
+  const data = await wahaRequest('POST', '/api/sendText', {
+    session: wahaSession(),
+    chatId: toChatId(args.to),
+    text: args.text,
+    ...(args.replyTo ? { reply_to: args.replyTo } : {}),
+  })
+  return { messageId: extractMessageId(data) }
+}
+
+export async function wahaSendMedia(args: {
+  to: string
+  kind: 'image' | 'video' | 'document' | 'audio'
+  link: string
+  caption?: string
+  filename?: string
+  replyTo?: string
+}): Promise<{ messageId: string }> {
+  const endpoint = {
+    image: '/api/sendImage',
+    video: '/api/sendVideo',
+    document: '/api/sendFile',
+    audio: '/api/sendVoice',
+  }[args.kind]
+
+  const file: Record<string, string> = { url: args.link }
+  if (args.kind === 'document' && args.filename) file.filename = args.filename
+  // WAHA requires a mimetype on the file object for most engines.
+  file.mimetype = guessMimeType(args.link, args.kind)
+
+  const data = await wahaRequest('POST', endpoint, {
+    session: wahaSession(),
+    chatId: toChatId(args.to),
+    file,
+    ...(args.caption && args.kind !== 'audio' ? { caption: args.caption } : {}),
+    ...(args.replyTo ? { reply_to: args.replyTo } : {}),
+  })
+  return { messageId: extractMessageId(data) }
+}
+
+function guessMimeType(link: string, kind: string): string {
+  const path = link.split('?')[0].toLowerCase()
+  const ext = path.includes('.') ? path.split('.').pop()! : ''
+  const map: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    gif: 'image/gif',
+    mp4: 'video/mp4',
+    mov: 'video/quicktime',
+    mp3: 'audio/mpeg',
+    ogg: 'audio/ogg; codecs=opus',
+    opus: 'audio/ogg; codecs=opus',
+    m4a: 'audio/mp4',
+    wav: 'audio/wav',
+    pdf: 'application/pdf',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    csv: 'text/csv',
+    txt: 'text/plain',
+    zip: 'application/zip',
+  }
+  if (map[ext]) return map[ext]
+  return {
+    image: 'image/jpeg',
+    video: 'video/mp4',
+    audio: 'audio/ogg; codecs=opus',
+    document: 'application/octet-stream',
+  }[kind as 'image' | 'video' | 'audio' | 'document']
+}
+
+// ------------------------------------------------------------
+// Interactive messages (buttons / lists)
+// ------------------------------------------------------------
+
+/**
+ * How buttons and lists are delivered over WAHA (`WAHA_INTERACTIVE_MODE`):
+ *   poll (default)  WhatsApp poll; the vote arrives as a `poll.vote` event
+ *   buttons         native /api/sendButtons + /api/sendList (WAHA marks these
+ *                   as unreliable/deprecated; depends on the engine)
+ *   text            numbered text menu; "1" or the option title is the answer
+ * Native sends fall back to the text menu when WAHA rejects them. Every
+ * answer is mapped back to the original button/row id by the
+ * /api/whatsapp/waha-webhook bridge, so flows advance in all modes.
+ */
+export type WahaInteractiveMode = 'poll' | 'buttons' | 'text'
+
+export function wahaInteractiveMode(): WahaInteractiveMode {
+  const raw = process.env.WAHA_INTERACTIVE_MODE?.trim().toLowerCase()
+  return raw === 'buttons' || raw === 'text' ? raw : 'poll'
+}
+
+export interface WahaOption {
+  id: string
+  title: string
+  description?: string
+}
+
+interface WahaInteractiveBase {
+  to: string
+  bodyText: string
+  headerText?: string
+  footerText?: string
+  replyTo?: string
+}
+
+type WahaGroup = { title?: string; options: WahaOption[] }
+
+export function buildTextMenu(base: WahaInteractiveBase, groups: WahaGroup[]): string {
+  let n = 0
+  const blocks = groups.map((g) => {
+    const lines = g.options.map((o) => {
+      n += 1
+      return `${n}. ${o.title}${o.description ? ` - ${o.description}` : ''}`
+    })
+    return [g.title ? `*${g.title}*` : null, ...lines].filter(Boolean).join('\n')
+  })
+  return [base.headerText, base.bodyText, blocks.join('\n\n'), base.footerText]
+    .filter(Boolean)
+    .join('\n\n')
+}
+
+async function sendInteractiveWithFallback(
+  base: WahaInteractiveBase,
+  groups: WahaGroup[],
+  native: () => Promise<unknown>,
+): Promise<{ messageId: string }> {
+  const mode = wahaInteractiveMode()
+  if (mode !== 'text') {
+    try {
+      const data =
+        mode === 'poll'
+          ? await wahaRequest('POST', '/api/sendPoll', {
+              session: wahaSession(),
+              chatId: toChatId(base.to),
+              poll: {
+                name: [base.headerText, base.bodyText].filter(Boolean).join('\n').slice(0, 250),
+                options: groups.flatMap((g) => g.options.map((o) => o.title)),
+                multipleAnswers: false,
+              },
+              ...(base.replyTo ? { reply_to: base.replyTo } : {}),
+            })
+          : await native()
+      return { messageId: extractMessageId(data) }
+    } catch (err) {
+      if (!(err instanceof WahaApiError)) throw err
+      console.warn(`[waha] ${mode} send failed, falling back to a text menu:`, err.message)
+    }
+  }
+  return wahaSendText({
+    to: base.to,
+    text: buildTextMenu(base, groups),
+    replyTo: base.replyTo,
+  })
+}
+
+export function wahaSendButtons(
+  args: WahaInteractiveBase & { buttons: WahaOption[] },
+): Promise<{ messageId: string }> {
+  return sendInteractiveWithFallback(args, [{ options: args.buttons }], () =>
+    wahaRequest('POST', '/api/sendButtons', {
+      session: wahaSession(),
+      chatId: toChatId(args.to),
+      ...(args.headerText ? { header: args.headerText } : {}),
+      body: args.bodyText,
+      ...(args.footerText ? { footer: args.footerText } : {}),
+      buttons: args.buttons.map((b) => ({ type: 'reply', id: b.id, text: b.title })),
+      ...(args.replyTo ? { reply_to: args.replyTo } : {}),
+    }),
+  )
+}
+
+export function wahaSendList(
+  args: WahaInteractiveBase & {
+    buttonLabel: string
+    sections: Array<{ title?: string; rows: WahaOption[] }>
+  },
+): Promise<{ messageId: string }> {
+  return sendInteractiveWithFallback(
+    args,
+    args.sections.map((s) => ({ title: s.title, options: s.rows })),
+    () =>
+      wahaRequest('POST', '/api/sendList', {
+        session: wahaSession(),
+        chatId: toChatId(args.to),
+        message: {
+          title: args.headerText ?? args.bodyText.slice(0, 60),
+          description: args.bodyText,
+          footer: args.footerText ?? '',
+          button: args.buttonLabel,
+          sections: args.sections.map((s) => ({
+            title: s.title ?? 'Options',
+            rows: s.rows.map((r) => ({
+              title: r.title,
+              rowId: r.id,
+              description: r.description ?? null,
+            })),
+          })),
+        },
+        ...(args.replyTo ? { reply_to: args.replyTo } : {}),
+      }),
+  )
+}
+
+export async function wahaSendReaction(args: {
+  targetMessageId: string
+  emoji: string
+}): Promise<{ messageId: string }> {
+  await wahaRequest('PUT', '/api/reaction', {
+    session: wahaSession(),
+    messageId: args.targetMessageId,
+    reaction: args.emoji,
+  })
+  // WAHA mints no id for reactions; the caller only needs a stable string.
+  return { messageId: `waha-reaction-${args.targetMessageId}-${Date.now()}` }
+}
+
+/** Mark an inbound message as read and show "typing…". Best-effort. */
+export async function wahaTyping(args: { messageId: string }): Promise<void> {
+  // Message ids look like `false_5511999999999@c.us_3EB0...`.
+  const parts = args.messageId.split('_')
+  const chatId = parts.length >= 3 ? parts[1] : null
+  if (!chatId) return
+  await wahaRequest('POST', '/api/sendSeen', {
+    session: wahaSession(),
+    chatId,
+  })
+  await wahaRequest('POST', '/api/startTyping', {
+    session: wahaSession(),
+    chatId,
+  })
+}
+
+// ------------------------------------------------------------
+// Session / identity
+// ------------------------------------------------------------
+
+export interface WahaSessionInfo {
+  name: string
+  status: string
+  me?: { id?: string; pushName?: string } | null
+}
+
+export async function wahaGetSession(): Promise<WahaSessionInfo> {
+  return wahaRequest<WahaSessionInfo>(
+    'GET',
+    `/api/sessions/${encodeURIComponent(wahaSession())}`,
+  )
+}
+
+/** Resolve a `@lid` identifier to the real phone number, when WAHA knows it. */
+export async function wahaResolveLid(lid: string): Promise<string | null> {
+  try {
+    const data = await wahaRequest<{ pn?: string | null }>(
+      'GET',
+      `/api/${encodeURIComponent(wahaSession())}/lids/${encodeURIComponent(lid)}`,
+    )
+    return data.pn ? chatIdToPhone(data.pn) : null
+  } catch {
+    return null
+  }
+}
+
+// ------------------------------------------------------------
+// Media
+// ------------------------------------------------------------
+
+const MEDIA_ID_PREFIX = 'waha_'
+
+/** Encode the WAHA file path into a path-safe id the existing media pipeline can carry. */
+export function encodeWahaMediaId(url: string): string {
+  let path = url
+  try {
+    const u = new URL(url)
+    path = `${u.pathname}${u.search}`
+  } catch {
+    // already a path
+  }
+  return MEDIA_ID_PREFIX + Buffer.from(path, 'utf8').toString('base64url')
+}
+
+export function isWahaMediaId(id: string): boolean {
+  return id.startsWith(MEDIA_ID_PREFIX)
+}
+
+export function decodeWahaMediaUrl(id: string): string {
+  const path = Buffer.from(id.slice(MEDIA_ID_PREFIX.length), 'base64url').toString('utf8')
+  return `${wahaBaseUrl()}${path.startsWith('/') ? '' : '/'}${path}`
+}
+
+export async function wahaDownload(
+  url: string,
+): Promise<{ buffer: Buffer; contentType: string }> {
+  const response = await fetch(url, { headers: wahaHeaders(false) })
+  if (!response.ok) {
+    throw new Error(`Media download failed: ${response.status}`)
+  }
+  return {
+    buffer: Buffer.from(await response.arrayBuffer()),
+    contentType: response.headers.get('content-type') || 'application/octet-stream',
+  }
+}
+
+export async function wahaHeadMedia(
+  url: string,
+): Promise<{ mimeType: string; fileSize: number | null }> {
+  try {
+    const response = await fetch(url, { method: 'HEAD', headers: wahaHeaders(false) })
+    const size = Number(response.headers.get('content-length'))
+    return {
+      mimeType: response.headers.get('content-type') || 'application/octet-stream',
+      fileSize: Number.isFinite(size) && size > 0 ? size : null,
+    }
+  } catch {
+    return { mimeType: 'application/octet-stream', fileSize: null }
+  }
+}

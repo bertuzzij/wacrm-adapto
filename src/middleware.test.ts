@@ -114,8 +114,48 @@ describe("middleware — refreshed auth cookies survive redirects", () => {
   });
 });
 
-describe("middleware — every dashboard route requires a session", () => {
-  // Read the route group rather than hard-coding a list, so a new page added
+describe("middleware — webhooks authenticate themselves, not with a session", () => {
+  // The exemption used to be `!pathname.includes('/webhook')`, which does
+  // NOT match '/api/whatsapp/waha-webhook' — the substring '/webhook' is
+  // absent from '/waha-webhook'. Every WAHA event got a 401 from here,
+  // long before the route's own token check ran. These cases pin both
+  // webhook routes as open to the middleware and pin a normal API route
+  // as still closed.
+  it.each([
+    "/api/whatsapp/webhook",
+    "/api/whatsapp/waha-webhook",
+  ])("does not reject a signed-out request to %s", async (path) => {
+    mockUser = null;
+
+    const res = await middleware(new NextRequest(`https://app.test${path}`));
+
+    expect(res.status).not.toBe(401);
+    expect(res.headers.get("location")).toBeNull();
+  });
+
+  it("still rejects a signed-out request to a session-authenticated whatsapp route", async () => {
+    mockUser = null;
+
+    const res = await middleware(
+      new NextRequest("https://app.test/api/whatsapp/send"),
+    );
+
+    expect(res.status).toBe(401);
+  });
+
+  it("does not exempt a path that merely contains 'webhook' as a suffix elsewhere", async () => {
+    mockUser = null;
+
+    // '/api/whatsapp/not-a-webhook-thing' must not inherit the exemption.
+    const res = await middleware(
+      new NextRequest("https://app.test/api/whatsapp/not-a-webhook-thing"),
+    );
+
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("middleware — every dashboard route requires a session", () => {  // Read the route group rather than hard-coding a list, so a new page added
   // under src/app/(dashboard)/ fails here until it is added to
   // protectedPaths. /flows, /agents and /notifications were missed that way
   // and rendered a broken page to signed-out visitors instead of redirecting.

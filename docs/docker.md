@@ -31,6 +31,23 @@ is included.
 > the healthcheck don't target. Compose pins it to 3000 for that
 > reason.
 
+### Binding to one interface (`HOST_BIND`)
+
+By default the port is published on every interface (`0.0.0.0`). When a
+reverse proxy on the same host is the only intended client — the usual
+setup on a VPS — restrict it to the loopback and let the proxy own the
+public port:
+
+```bash
+HOST_BIND=127.0.0.1
+HOST_PORT=3100
+```
+
+That combination makes the app reachable at `http://127.0.0.1:3100` only,
+which is what an nginx/OpenResty vhost proxies to. `HOST_PORT=3100` also
+keeps the app clear of a `:3000` already taken by something else on the
+host (WAHA, for instance).
+
 ## Build-time vs runtime variables
 
 - `NEXT_PUBLIC_*` variables are **inlined into the client bundle at
