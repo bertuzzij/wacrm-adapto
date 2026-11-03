@@ -27,8 +27,14 @@ import {
 } from '@/lib/whatsapp/waha';
 import { chatIdFor, extFor, resolveName } from './rules';
 
-/** Bucket existente — o mesmo dos avatares de perfil (migration 008). */
-const BUCKET = 'avatars';
+/**
+ * Bucket das fotos de contato — próprio, criado na migration 061.
+ *
+ * Não é o `avatars`: aquele é avatar de PERFIL de usuário e sua política
+ * exige `auth.uid()` como primeiro segmento do caminho. Contato pertence à
+ * conta, não a um usuário, então gravar lá é barrado pela RLS.
+ */
+const BUCKET = 'contact-avatars';
 
 /** Teto de segurança por imagem; o bucket aceita 2 MB. */
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
@@ -152,9 +158,11 @@ export async function syncContactProfiles(
           throw new Error(`imagem grande demais (${buffer.byteLength} bytes)`);
         }
         const ext = extFor(contentType);
-        // Caminho estável por contato: reescrever o mesmo objeto substitui
-        // a foto antiga em vez de acumular lixo no bucket.
-        const path = `contacts/${accountId}/${raw.id}.${ext}`;
+        // Caminho estável por contato, no escopo da conta — o primeiro
+        // segmento (`account-<id>`) é o que as políticas do bucket checam
+        // (migration 061). Reescrever o mesmo objeto substitui a foto antiga
+        // em vez de acumular lixo.
+        const path = `account-${accountId}/contacts/${raw.id}.${ext}`;
 
         const upload = await db.storage
           .from(BUCKET)
