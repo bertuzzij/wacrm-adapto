@@ -37,7 +37,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "hooks:install": "node scripts/install-hooks.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "prepare": "node scripts/install-hooks.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

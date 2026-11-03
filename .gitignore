@@ -50,3 +50,22 @@ supabase/.temp/
 .waha-webhook-url.txt
 # generated locally: previous WAHA webhook list, written before each re-register
 .waha-webhooks.backup-*.json
+
+# local secrets that must never be tracked, whatever they are named.
+# Belt and braces next to the .env* rule above — a stray `secrets.env`
+# inside a subdirectory is not matched by a root-level `.env*` pattern,
+# but is matched by these.
+.secrets/
+secrets/
+*.secret
+*.secrets
+credentials.json
+service-account*.json
+cloudflared-token*
+# private keys (public halves, *.pub, stay trackable on purpose)
+*.pem
+*.key
+*.p12
+*.pfx
+!**/*.pub
+
