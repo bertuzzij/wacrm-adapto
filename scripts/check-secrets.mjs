@@ -67,6 +67,37 @@ const PATTERNS = [
   { name: 'Hardcoded credential assignment', re: /\b[A-Z][A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|API_KEY|PRIVATE_KEY)[A-Z0-9_]*\s*[:=]\s*["']?([A-Za-z0-9_\-+/.=]{24,})["']?/g },
 ]
 
+// ---------------------------------------------------------------------------
+// Personal / infrastructure data
+//
+// A secret scanner catches credentials. It does not catch the things that
+// leak just as permanently and embarrass differently: a phone number in a
+// test fixture, your home IP in a doc, the internal hostname of your
+// homelab. Every literal below came from this fork's own env at some point.
+//
+// These are exact strings, not shapes: a real number and a made-up one look
+// identical, so only the specific ones that belong to this operator are
+// matched. Keep this list in sync when infrastructure changes.
+// ---------------------------------------------------------------------------
+const PERSONAL_PATTERNS = [
+  { name: 'operator domain', re: /conectaja\.online/gi },
+  { name: 'operator VPS/WAHA host', re: /(whadmin|auton)\./gi },
+  { name: 'operator phone number', re: /\b5516(997541096|994646393)\b/g },
+  { name: 'operator Supabase project ref', re: /jktdevacmcfviaizkepz/gi },
+  { name: 'homelab hostname', re: /\bbrtznote\b/gi },
+  { name: 'private LAN address', re: /\b192\.168\.\d{1,3}\.\d{1,3}\b/g },
+  { name: 'Cloudflare tunnel id', re: /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/g },
+  { name: 'operator name/email', re: /\b(?:jhonatan|jbertuzzi|bertuzzi|suporte\s*j?bertuzzi|jhonatanbertuzzi|suportejbertuzzi)\b/gi },
+]
+
+/**
+ * Paths where the personal patterns are legitimately expected: the docs
+ * that describe this deployment, and the tests that assert the redaction
+ * itself. Everything else must stay clean.
+ */
+const PERSONAL_PATTERN_ALLOWLIST = [/^docs\/seguranca-fork\.md$/, /^scripts\/check-secrets\.mjs$/]
+
+
 function isPlaceholder(value) {
   return PLACEHOLDER.some((p) => p.test(value))
 }
@@ -143,6 +174,22 @@ for (const file of files) {
         sample: `«${captured.slice(0, 4)}…» (${captured.length} chars)`,
       })
       break // one report per pattern per file is enough
+    }
+  }
+
+  // Layer 3: this operator's own identifiers. Skipped for the few files
+  // that exist to document the deployment or the redaction rules.
+  if (!PERSONAL_PATTERN_ALLOWLIST.some((re) => re.test(file))) {
+    for (const { name, re } of PERSONAL_PATTERNS) {
+      re.lastIndex = 0
+      const match = re.exec(content)
+      if (match) {
+        problems.push({
+          file,
+          kind: `${name} — this is your data, replace it with a fictitious value`,
+          sample: `«${match[0].slice(0, 3)}…»`,
+        })
+      }
     }
   }
 }
