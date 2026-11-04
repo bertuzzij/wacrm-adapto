@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
@@ -52,6 +52,7 @@ export function useBrowserNotifications(): void {
   const enabled = useBrowserNotifyPref();
   const router = useRouter();
   const t = useTranslations("Settings.browserNotifications.labels");
+  const channelSuffix = useId().replace(/[^a-zA-Z0-9_-]/g, "");
 
   // Translated labels, read inside the async Realtime callback. Kept in
   // a ref (assigned in an effect, not during render) so a locale change
@@ -120,7 +121,11 @@ export function useBrowserNotifications(): void {
     };
 
     const channel = supabase
-      .channel("browser-notifications")
+      // Nome único por instância: supabase-js deduplica canais por nome e
+      // devolve o MESMO objeto, então um segundo mount cairia no erro
+      // "cannot add postgres_changes callbacks after subscribe()". É o
+      // mesmo bug que derrubou o dashboard em use-total-unread.ts.
+      .channel(`browser-notifications-${channelSuffix}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
@@ -147,5 +152,5 @@ export function useBrowserNotifications(): void {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [enabled, router]);
+  }, [enabled, router, channelSuffix]);
 }

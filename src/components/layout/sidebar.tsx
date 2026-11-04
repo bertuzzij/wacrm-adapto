@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
-import { useTotalUnread } from "@/hooks/use-total-unread";
+import { useUnreadCount } from "@/adapto/inbox/unread-count-context";
 import {
   formatUnreadBadge,
   shouldShowUnreadIndicator,
@@ -121,7 +121,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const t = useTranslations("Sidebar");
   const pathname = usePathname();
   const { profile, profileLoading, account, accountRole, signOut } = useAuth();
-  const totalUnread = useTotalUnread();
+  const totalUnread = useUnreadCount();
   const unreadNotifications = useUnreadNotifications();
   // Only surface the account-name strip when it actually carries
   // information. A solo user's personal account is named after them

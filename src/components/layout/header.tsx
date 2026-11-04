@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ModeToggle } from "@/components/layout/mode-toggle";
 import { UnreadBell } from "@/adapto/inbox/unread-bell";
+import { useUnreadCount } from "@/adapto/inbox/unread-count-context";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "dashboard",
@@ -42,19 +43,18 @@ interface HeaderProps {
   /** Wired to the shell's drawer state. Used only on mobile — the
    *  hamburger button is hidden on lg+. */
   onOpenSidebar?: () => void;
-  /** Conversas com mensagem não lida. Vem do shell, que já mantém a
-   *  subscription via `useTotalUnread()` — passar por prop evita abrir um
-   *  segundo canal de realtime em `conversations`. */
-  unreadConversations?: number;
 }
 
 import { useTranslations } from "next-intl";
 
-export function Header({ onOpenSidebar, unreadConversations = 0 }: HeaderProps) {
+export function Header({ onOpenSidebar }: HeaderProps) {
   const t = useTranslations("Header");
   const pathname = usePathname();
   const { profile, signOut } = useAuth();
   const titleKey = getPageTitleKey(pathname);
+  // Valor compartilhado pelo <UnreadCountProvider> do shell — nenhuma
+  // subscription nova é aberta aqui.
+  const unreadConversations = useUnreadCount();
 
   const initial =
     profile?.full_name?.charAt(0)?.toUpperCase() ??

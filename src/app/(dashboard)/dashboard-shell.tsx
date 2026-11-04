@@ -9,7 +9,7 @@ import { Header } from "@/components/layout/header";
 import { AccountAccessAlert } from "@/components/layout/account-access-alert";
 import { PresenceHeartbeat } from "@/components/presence/presence-heartbeat";
 import { BrowserNotificationsListener } from "@/components/notifications/browser-notifications-listener";
-import { useTotalUnread } from "@/hooks/use-total-unread";
+import { UnreadCountProvider } from "@/adapto/inbox/unread-count-context";
 
 // Auth-gated dashboard shell. Extracted from the layout so the layout
 // itself can stay a server component and export metadata (noindex) —
@@ -19,12 +19,6 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const t = useTranslations("DashboardShell");
-
-  // Fonte única da contagem de não-lidas do shell. O Header (sino) e a
-  // Sidebar (badge) já têm seus próprios canais abertos por
-  // `useTotalUnread`, então o valor é lido aqui e repassado ao Header por
-  // prop — assim o sino não abre uma terceira subscription.
-  const unreadConversations = useTotalUnread();
 
   // Sidebar drawer state — only used on mobile. On lg+ the sidebar is
   // always visible and this stays at `false` (ignored by the component).
@@ -51,28 +45,30 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   if (!user) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Reports this tab's online/away presence once we know a user is
-          signed in. Headless — renders nothing. */}
-      <PresenceHeartbeat />
-      {/* Desktop alerts for new customer messages (opt-in via Settings →
-          Your profile). Headless — renders nothing. */}
-      <BrowserNotificationsListener />
-      <Sidebar open={sidebarOpen} onClose={closeSidebar} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header
-          onOpenSidebar={() => setSidebarOpen(true)}
-          unreadConversations={unreadConversations}
-        />
-        {/* Thinner horizontal padding on mobile so cards have room to breathe. */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-          {/* Above every page: writes are being rejected and here's why.
-              Renders nothing unless the account/role failed to resolve. */}
-          <AccountAccessAlert />
-          {children}
-        </main>
+    // Provider único da contagem de não-lidas: o Header (sino) e a
+    // Sidebar (badge) leem o MESMO valor de UMA subscription. Chamar o
+    // hook nos dois lados era o que duplicava o canal realtime.
+    <UnreadCountProvider>
+      <div className="flex h-screen overflow-hidden bg-background">
+        {/* Reports this tab's online/away presence once we know a user is
+            signed in. Headless — renders nothing. */}
+        <PresenceHeartbeat />
+        {/* Desktop alerts for new customer messages (opt-in via Settings →
+            Your profile). Headless — renders nothing. */}
+        <BrowserNotificationsListener />
+        <Sidebar open={sidebarOpen} onClose={closeSidebar} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <Header onOpenSidebar={() => setSidebarOpen(true)} />
+          {/* Thinner horizontal padding on mobile so cards have room to breathe. */}
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+            {/* Above every page: writes are being rejected and here's why.
+                Renders nothing unless the account/role failed to resolve. */}
+            <AccountAccessAlert />
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </UnreadCountProvider>
   );
 }
 
