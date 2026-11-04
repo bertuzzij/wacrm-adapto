@@ -54,3 +54,99 @@ export function shouldShowUnreadIndicator({
 export function bellHref(): string {
   return '/inbox?filter=unread'
 }
+
+// ============================================================
+// Distinguir a ORIGEM do aviso.
+//
+// O sino junta duas coisas diferentes:
+//
+//   inbox       — conversa com mensagem do cliente esperando resposta.
+//                 Vem de `conversations.unread_count`.
+//   atribuição  — alguém te passou uma conversa. Vem da tabela
+//                 `notifications` (trigger on_conversation_assigned).
+//
+// Somar tudo num número só esconde a diferença, e as duas exigem ações
+// diferentes: mensagem pede resposta, atribuição pede que você saiba que
+// a conversa agora é sua. Por isso o painel abre em seções separadas.
+// ============================================================
+
+/** Origem de um aviso no sino. */
+export type BellSource = 'inbox' | 'assignment'
+
+export interface BellSection {
+  source: BellSource
+  count: number
+  /** Para onde o clique leva. */
+  href: string
+}
+
+/**
+ * Seções a exibir, na ordem de urgência: mensagem do cliente primeiro
+ * (tem prazo de resposta), atribuição depois.
+ *
+ * Categorias zeradas são omitidas — um cabeçalho "Atribuições (0)" só
+ * ocuparia espaço. Contagens negativas ou inválidas também somem, pelo
+ * mesmo motivo de `formatUnreadBadge`.
+ */
+export function bellSections({
+  unreadConversations,
+  unreadNotifications,
+}: {
+  unreadConversations: number
+  unreadNotifications: number
+}): BellSection[] {
+  const normalize = (n: number) =>
+    Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
+
+  const sections: BellSection[] = [
+    {
+      source: 'inbox',
+      count: normalize(unreadConversations),
+      href: '/inbox?filter=unread',
+    },
+    {
+      source: 'assignment',
+      count: normalize(unreadNotifications),
+      href: '/notifications',
+    },
+  ]
+
+  return sections.filter((s) => s.count > 0)
+}
+
+/**
+ * Total mostrado no badge do sino: as duas origens somadas.
+ *
+ * Devolve 0 quando não há nada, para o chamador usar `formatUnreadBadge`
+ * e obter o `null` que esconde o badge.
+ */
+export function bellTotal({
+  unreadConversations,
+  unreadNotifications,
+}: {
+  unreadConversations: number
+  unreadNotifications: number
+}): number {
+  return bellSections({ unreadConversations, unreadNotifications }).reduce(
+    (sum, s) => sum + s.count,
+    0
+  )
+}
+
+/**
+ * Para onde o sino leva quando clicado sem abrir o painel.
+ *
+ * Com apenas uma origem, vai direto para ela. Com as duas, prioriza o
+ * inbox (mensagem do cliente tem prazo). Sem nada, também inbox: é a tela
+ * onde o trabalho acontece.
+ */
+export function bellPrimaryHref({
+  unreadConversations,
+  unreadNotifications,
+}: {
+  unreadConversations: number
+  unreadNotifications: number
+}): string {
+  const [first] = bellSections({ unreadConversations, unreadNotifications })
+  return first?.href ?? bellHref()
+}

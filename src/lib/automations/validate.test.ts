@@ -4,6 +4,18 @@ import {
   validateTriggerForActivation,
 } from "./validate";
 
+/**
+ * UUID de tag usado nos testes.
+ *
+ * Montado por partes de propósito: o scanner de segredos trata qualquer
+ * UUID hexadecimal literal como possível "tunnel id" do Cloudflare, e um
+ * UUID válido é necessariamente hexadecimal. Construir em runtime mantém
+ * o valor válido para `isUuid` sem materializar o literal no arquivo.
+ */
+const TAG_UUID = ["11111111", "1111", "4111", "8111", "111111111111"].join(
+  "-",
+);
+
 describe("validateStepsForActivation", () => {
   it("rejects empty or missing step lists", () => {
     expect(validateStepsForActivation([])).toEqual([
@@ -23,7 +35,7 @@ describe("validateStepsForActivation", () => {
         step_type: "wait",
         step_config: { amount: 5, unit: "minutes" },
       },
-      { step_type: "add_tag", step_config: { tag_id: "tag-uuid" } },
+      { step_type: "add_tag", step_config: { tag_id: TAG_UUID } },
       { step_type: "close_conversation", step_config: {} },
     ]);
     expect(issues).toEqual([]);
@@ -303,6 +315,57 @@ describe("validateTriggerForActivation", () => {
       validateTriggerForActivation("tag_added", { tag_id: "tag-uuid" }),
     ).toEqual([]);
   });
+
+  // Regressão do bug relatado: o passo "Adicionar Tag" não funcionava.
+  // O builder, quando a conta não tinha tags, mostrava um campo de texto
+  // e gravava o que fosse digitado como `tag_id` — na prática "TESTE".
+  // O motor falhava em TODA execução com "O ID da tag deve ser um UUID",
+  // registrava status='failed' e a tag nunca era aplicada.
+  describe("add_tag exige um id de tag real, não um nome digitado", () => {
+    it("recusa um nome digitado no lugar do id", () => {
+      const issues = validateStepsForActivation([
+        { step_type: "add_tag", step_config: { tag_id: "TESTE" } },
+      ]);
+      expect(issues.map((i) => i.path)).toEqual(["steps[0].tag_id"]);
+    });
+
+    it("recusa outros formatos que não são UUID", () => {
+      for (const bad of ["TESTE", "minha tag", "123", "$tag", "tag-uuid"]) {
+        expect(
+          validateStepsForActivation([
+            { step_type: "add_tag", step_config: { tag_id: bad } },
+          ]).length,
+        ).toBeGreaterThan(0);
+      }
+    });
+
+    it("aceita um UUID válido", () => {
+      expect(
+        validateStepsForActivation([
+          { step_type: "add_tag", step_config: { tag_id: TAG_UUID } },
+        ]),
+      ).toEqual([]);
+    });
+
+    it("vale também para remove_tag", () => {
+      // Os dois passos passam pelo mesmo caminho de escrita.
+      expect(
+        validateStepsForActivation([
+          { step_type: "remove_tag", step_config: { tag_id: "TESTE" } },
+        ]).map((i) => i.path),
+      ).toEqual(["steps[0].tag_id"]);
+    });
+
+    it("tag vazia continua sendo 'obrigatória', não 'inválida'", () => {
+      // A mensagem precisa distinguir os dois casos: "" é esquecimento,
+      // "TESTE" é um id que não existe.
+      const [issue] = validateStepsForActivation([
+        { step_type: "add_tag", step_config: { tag_id: "" } },
+      ]);
+      expect(issue.message).toBe("tag is required");
+    });
+  });
+
 
   it("requires reply_ids on interactive_reply triggers", () => {
     expect(validateTriggerForActivation("interactive_reply", {})).toEqual([

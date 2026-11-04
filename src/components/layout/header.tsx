@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ModeToggle } from "@/components/layout/mode-toggle";
 import { UnreadBell } from "@/adapto/inbox/unread-bell";
-import { useUnreadCount } from "@/adapto/inbox/unread-count-context";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "dashboard",
@@ -52,9 +51,6 @@ export function Header({ onOpenSidebar }: HeaderProps) {
   const pathname = usePathname();
   const { profile, signOut } = useAuth();
   const titleKey = getPageTitleKey(pathname);
-  // Valor compartilhado pelo <UnreadCountProvider> do shell — nenhuma
-  // subscription nova é aberta aqui.
-  const unreadConversations = useUnreadCount();
 
   const initial =
     profile?.full_name?.charAt(0)?.toUpperCase() ??
@@ -79,10 +75,10 @@ export function Header({ onOpenSidebar }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-1 sm:gap-2">
-        {/* Sino de não-lidas. Fica antes do toggle de tema para não
+        {/* Sino de avisos. Fica antes do toggle de tema para não
             deslocar os controles que o usuário já conhece — e porque
             mensagem esperando resposta importa mais que o tema. */}
-        <UnreadBell total={unreadConversations} />
+        <UnreadBell />
 
         <ModeToggle />
 

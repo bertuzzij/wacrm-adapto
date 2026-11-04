@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -239,6 +240,8 @@ interface AutomationResources {
   customFields: CustomField[]
   pipelines: PipelineOption[]
   stages: PipelineStageOption[]
+  /** Recarrega as tags depois de criar uma nova no próprio builder. */
+  reloadTags: () => Promise<void>
 }
 
 interface PipelineOption {
@@ -260,6 +263,9 @@ const ResourcesContext = createContext<AutomationResources>({
   customFields: [],
   pipelines: [],
   stages: [],
+  // Default no-op: o contexto só é consumido dentro do provider, mas o
+  // valor inicial precisa satisfazer o tipo.
+  reloadTags: async () => {},
 })
 
 function useResources(): AutomationResources {
@@ -273,6 +279,14 @@ function ResourcesProvider({ children }: { children: ReactNode }) {
   const [customFields, setCustomFields] = useState<CustomField[]>([])
   const [pipelines, setPipelines] = useState<PipelineOption[]>([])
   const [stages, setStages] = useState<PipelineStageOption[]>([])
+
+  // Recarrega só as tags. Usado após criar uma tag dentro do builder, para
+  // o seletor sair do estado vazio sem exigir um refresh da página.
+  const reloadTags = useCallback(async () => {
+    const supabase = createClient()
+    const { data } = await supabase.from("tags").select("*").order("name")
+    setTags((data as TagRecord[] | null) ?? [])
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -327,7 +341,15 @@ function ResourcesProvider({ children }: { children: ReactNode }) {
 
   return (
     <ResourcesContext.Provider
-      value={{ tags, members, templates, customFields, pipelines, stages }}
+      value={{
+        tags,
+        members,
+        templates,
+        customFields,
+        pipelines,
+        stages,
+        reloadTags,
+      }}
     >
       {children}
     </ResourcesContext.Provider>
@@ -348,17 +370,22 @@ function TagSelect({
   onChange: (v: string) => void
   t: ReturnType<typeof useTranslations>
 }) {
-  const { tags } = useResources()
+  const { tags, reloadTags } = useResources()
+
+  // BUG HISTÓRICO (corrigido aqui): quando a conta não tinha nenhuma tag,
+  // este componente virava um <Input> de texto livre e gravava o que o
+  // usuário digitasse como `tag_id` — por exemplo "TESTE". O motor então
+  // falhava com "O ID da tag deve ser um UUID", a automação registrava
+  // status='failed' e a tag nunca era aplicada.
+  //
+  // Um `tag_id` é uma CHAVE ESTRANGEIRA, não um rótulo: digitar o nome da
+  // tag não pode funcionar, porque não existe linha em `tags` com aquele
+  // id. Agora, sem tags, oferecemos criá-la de verdade e selecionamos o id
+  // retornado — o valor gravado é sempre um UUID existente.
   if (tags.length === 0) {
-    return (
-      <Input
-        placeholder={t("tags.placeholder")}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="bg-muted text-foreground"
-      />
-    )
+    return <EmptyTagState onCreated={onChange} t={t} reloadTags={reloadTags} />
   }
+
   const selected = tags.find((t) => t.id === value)
   return (
     <div className="flex items-center gap-2">
@@ -384,6 +411,101 @@ function TagSelect({
           <option value={value}>{t("tags.unknown", { id: value })}</option>
         )}
       </select>
+    </div>
+  )
+}
+
+/**
+ * Estado "esta conta ainda não tem tags".
+ *
+ * Antes o builder mostrava um campo de texto, o que produzia um
+ * `tag_id` inválido em silêncio. Aqui a criação acontece de fato, e o
+ * seletor passa a receber o UUID da tag recém-criada.
+ */
+function EmptyTagState({
+  onCreated,
+  reloadTags,
+  t,
+}: {
+  onCreated: (tagId: string) => void
+  reloadTags: () => Promise<void>
+  t: ReturnType<typeof useTranslations>
+}) {
+  const [name, setName] = useState("")
+  const [saving, setSaving] = useState(false)
+
+  const create = async () => {
+    const trimmed = name.trim()
+    if (!trimmed || saving) return
+    setSaving(true)
+    try {
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("account_id")
+        .eq("user_id", user?.id ?? "")
+        .maybeSingle()
+      const accountId = (profile as { account_id?: string } | null)?.account_id
+      if (!accountId) {
+        toast.error(t("tags.createFailed"))
+        return
+      }
+
+      const { data, error } = await supabase
+        .from("tags")
+        .insert({ account_id: accountId, name: trimmed })
+        .select("id")
+        .maybeSingle()
+
+      if (error || !data) {
+        toast.error(t("tags.createFailed"))
+        return
+      }
+
+      await reloadTags()
+      onCreated((data as { id: string }).id)
+      toast.success(t("tags.created", { name: trimmed }))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5">
+      <p className="text-[11px] leading-snug text-amber-200">
+        {t("tags.noneYet")}
+      </p>
+      <div className="flex gap-1.5">
+        <Input
+          placeholder={t("tags.namePlaceholder")}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault()
+              void create()
+            }
+          }}
+          className="h-8 bg-background text-foreground"
+          disabled={saving}
+        />
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => void create()}
+          disabled={!name.trim() || saving}
+          className="h-8 shrink-0"
+        >
+          {saving ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            t("tags.create")
+          )}
+        </Button>
+      </div>
     </div>
   )
 }

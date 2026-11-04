@@ -2,6 +2,7 @@ import type { AutomationTriggerType } from '@/types'
 import { validateInteractivePayload } from '@/lib/whatsapp/interactive'
 import { getT } from '@/lib/i18n/translate'
 import { isValidTimeZone } from './time-of-day'
+import { isUuid } from '@/lib/api/v1/pagination'
 
 const t = getT('Validation.automations')
 
@@ -82,6 +83,14 @@ function validateOne(step: StepLike, path: string, issues: ValidationIssue[]): v
     case 'remove_tag':
       if (!nonEmpty(c.tag_id)) {
         issues.push({ path: `${path}.tag_id`, message: t('tagRequired') })
+      } else if (!isUuid(String(c.tag_id))) {
+        // `tag_id` é chave estrangeira para `tags.id`, não um rótulo.
+        // O builder já aceitou texto livre uma vez (quando a conta não
+        // tinha tags) e gravava coisas como "TESTE"; o motor então
+        // falhava em toda execução com "O ID da tag deve ser um UUID".
+        // Recusar na ativação transforma um erro silencioso por execução
+        // num erro único e visível no momento de salvar.
+        issues.push({ path: `${path}.tag_id`, message: t('tagInvalid') })
       }
       break
     case 'assign_conversation':

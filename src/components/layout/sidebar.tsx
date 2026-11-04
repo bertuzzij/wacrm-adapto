@@ -5,12 +5,11 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
-import { useUnreadCount } from "@/adapto/inbox/unread-count-context";
+import { useBellCounts } from "@/adapto/inbox/unread-count-context";
 import {
   formatUnreadBadge,
   shouldShowUnreadIndicator,
 } from "@/adapto/inbox/unread-summary";
-import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import {
   Bell,
   Bot,
@@ -121,8 +120,8 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const t = useTranslations("Sidebar");
   const pathname = usePathname();
   const { profile, profileLoading, account, accountRole, signOut } = useAuth();
-  const totalUnread = useUnreadCount();
-  const unreadNotifications = useUnreadNotifications();
+  const { unreadConversations: totalUnread, unreadNotifications } =
+    useBellCounts();
   // Only surface the account-name strip when it actually carries
   // information. A solo user's personal account is named after them
   // (the 017 signup trigger seeds it from `full_name`), so showing it

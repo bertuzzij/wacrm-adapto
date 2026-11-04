@@ -46,8 +46,8 @@ describe('regressão: contagem de não-lidas não pode duplicar subscription', (
 
   it('o sino e o menu leem o valor de um contexto, não do hook cada um', async () => {
     // A correção definitiva: uma subscription só, compartilhada. Se o
-    // sidebar ou o header voltarem a chamar useTotalUnread direto, o
-    // canal duplica de novo.
+    // sidebar, o header ou o sino voltarem a chamar useTotalUnread ou
+    // useUnreadNotifications direto, o canal duplica de novo.
     const fs = await import('node:fs');
 
     const sidebar = fs.readFileSync(
@@ -58,11 +58,37 @@ describe('regressão: contagem de não-lidas não pode duplicar subscription', (
       'src/components/layout/header.tsx',
       'utf8'
     );
+    const bell = fs.readFileSync('src/adapto/inbox/unread-bell.tsx', 'utf8');
 
-    expect(sidebar).not.toMatch(/useTotalUnread\(\)/);
-    expect(header).not.toMatch(/useTotalUnread\(\)/);
-    expect(sidebar).toMatch(/useUnreadCount\(\)/);
-    expect(header).toMatch(/useUnreadCount\(\)/);
+    for (const src of [sidebar, header, bell]) {
+      expect(src).not.toMatch(/useTotalUnread\(\)/);
+      expect(src).not.toMatch(/useUnreadNotifications\(\)/);
+    }
+
+    // O menu e o sino leem o contexto, nunca os hooks.
+    expect(sidebar).toMatch(/useBellCounts\(\)/);
+    expect(bell).toMatch(/useBellCounts\(\)/);
+  });
+
+  it('o provider é o único lugar que monta os hooks de contagem', async () => {
+    const fs = await import('node:fs');
+    const providers = [
+      'src/adapto/inbox/unread-count-context.tsx',
+      'src/app/(dashboard)/dashboard-shell.tsx',
+    ];
+
+    for (const p of providers) {
+      const src = fs.readFileSync(p, 'utf8');
+      const linhas = src
+        .split('\n')
+        .filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*'));
+
+      // Nenhum consumidor pode chamar os hooks direto; só o provider.
+      if (p.includes('dashboard-shell')) {
+        expect(linhas.join('\n')).not.toMatch(/useTotalUnread\(\)/);
+        expect(linhas.join('\n')).not.toMatch(/useUnreadNotifications\(\)/);
+      }
+    }
   });
 
   it('o provider monta o hook uma única vez', async () => {
