@@ -58,7 +58,8 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Profile",
     "menuSettings": "Settings",
-    "menuSignOut": "Sign out"
+    "menuSignOut": "Sign out",
+    "unreadMessages": "{count, plural, =0 {No unread conversations} one {1 unread conversation} other {# unread conversations}}"
   },
   "ModeToggle": {
     "switchMode": "Switch to {mode} mode"

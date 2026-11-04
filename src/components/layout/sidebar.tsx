@@ -6,6 +6,10 @@ import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useTotalUnread } from "@/hooks/use-total-unread";
+import {
+  formatUnreadBadge,
+  shouldShowUnreadIndicator,
+} from "@/adapto/inbox/unread-summary";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import {
   Bell,
@@ -213,8 +217,21 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                 pathname === item.href ||
                 (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
+              // O indicador NÃO some quando a seção está ativa. Antes ele
+              // exigia `!isActive`, então desaparecia exatamente quando o
+              // usuário navegava para o inbox para procurar as não-lidas.
+              // A regra (com testes) está em
+              // src/adapto/inbox/unread-summary.ts.
+              const isInboxItem = item.href === "/inbox";
               const showUnreadDot =
-                item.href === "/inbox" && totalUnread > 0 && !isActive;
+                isInboxItem &&
+                shouldShowUnreadIndicator({
+                  total: totalUnread,
+                  isActiveSection: isActive,
+                });
+              const unreadBadge = isInboxItem
+                ? formatUnreadBadge(totalUnread)
+                : null;
 
               // Unlike the inbox dot, the notifications count stays visible
               // even while the page is active — it reflects unread state
@@ -248,10 +265,9 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                     {showUnreadDot && (
                       <span
                         aria-label={t("unreadConversations", { count: totalUnread })}
-                        className="relative flex h-2 w-2"
+                        className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
                       >
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                        {unreadBadge}
                       </span>
                     )}
                     {showNotificationBadge && (
