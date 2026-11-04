@@ -623,8 +623,31 @@ async function executeStepsFrom(args: ExecuteArgs): Promise<ScopeOutcome> {
         detail: msg,
       })
       status = 'failed'
-      errorMessage = msg
-      break
+      // Guarda o PRIMEIRO erro: é a causa raiz, e é o que o log deve
+      // destacar. Erros seguintes costumam ser consequência dele.
+      errorMessage ??= msg
+
+      // Continua com os próximos passos em vez de abortar.
+      //
+      // Antes havia um `break` aqui, e isso transformava uma falha local
+      // em falha total: no relato, o `add_tag` estava com um id inválido
+      // e, por causa do break, os passos seguintes (`create_deal`,
+      // `send_buttons`, `send_list`) NUNCA rodavam — mesmo sendo
+      // independentes. O usuário via "a automação não envia a lista" e o
+      // problema real estava dois passos antes.
+      //
+      // Risco assumido: um passo que dependa do anterior pode falhar em
+      // cascata. Isso é preferível a suprimir em silêncio todo o resto da
+      // automação — e a cascata fica visível no log, enquanto a supressão
+      // não deixava rastro nenhum dos passos que não rodaram.
+      //
+      // EXCEÇÃO: quando o passo que falhou é um `wait_for_reply`. Os
+      // passos seguintes só deveriam rodar DEPOIS da resposta do contato;
+      // se o "estacionamento" dessa espera falhou, não existe linha
+      // pendente e sequer há como retomar. Executar o resto agora seria
+      // mandar mensagens fora de ordem — pior que parar.
+      if (waitsForReply(step)) break
+      continue
     }
   }
 

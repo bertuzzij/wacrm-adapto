@@ -961,6 +961,27 @@ describe("wait_for_reply", () => {
     });
   });
 
+  it("keeps running later steps after a failing step (bug: add_tag blocked the list)", async () => {
+    // Regressão do relato: um `add_tag` com id inválido fazia a automação
+    // parar ali, e os passos seguintes (create_deal, send_buttons,
+    // send_list) nunca rodavam. O usuário via "não envia a lista" e a
+    // causa estava dois passos antes.
+    h.state.steps = [
+      step("tag", "add_tag", 0, { tag_id: "TESTE" }),
+      step("say", "send_message", 1, say("depois da tag")),
+    ];
+
+    await trigger("Hii");
+
+    // A mensagem posterior foi enviada mesmo com a tag falhando.
+    expect(sentTexts()).toContain("depois da tag");
+    // E o log registra a falha, com o erro original.
+    expect(h.state.logUpdates.at(-1)).toMatchObject({
+      status: "failed",
+      error_message: expect.stringContaining("UUID"),
+    });
+  });
+
   it("fails the run when superseding the older wait errors (issue #642)", async () => {
     h.state.steps = userMenu();
     h.state.pendingUpdateError = { message: "db down" };

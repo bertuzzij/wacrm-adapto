@@ -449,19 +449,27 @@ function EmptyTagState({
         .eq("user_id", user?.id ?? "")
         .maybeSingle()
       const accountId = (profile as { account_id?: string } | null)?.account_id
-      if (!accountId) {
+      if (!accountId || !user) {
         toast.error(t("tags.createFailed"))
         return
       }
 
+      // `tags` tem user_id NOT NULL e sem default (ver tag-manager.tsx):
+      // enviar só account_id + name falha com 23502 e a tag não é criada.
       const { data, error } = await supabase
         .from("tags")
-        .insert({ account_id: accountId, name: trimmed })
+        .insert({
+          user_id: user.id,
+          account_id: accountId,
+          name: trimmed,
+        })
         .select("id")
         .maybeSingle()
 
       if (error || !data) {
-        toast.error(t("tags.createFailed"))
+        // Mostra o motivo real em vez de um "falhou" genérico — foi o que
+        // escondeu esse bug: o INSERT era recusado e ninguém via por quê.
+        toast.error(error?.message ?? t("tags.createFailed"))
         return
       }
 
