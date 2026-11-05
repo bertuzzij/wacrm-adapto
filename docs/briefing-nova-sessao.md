@@ -326,6 +326,22 @@ número **no upstream**. Se houver sobreposição, renomeie a nossa para o próx
 número livre. Migração já aplicada em produção **não se renomeia** — mas migração
 ainda não aplicada, sim.
 
+**As lacunas `050` e `056` são intencionais — não "conserte".**
+
+A numeração tem buracos e isso confunde à primeira vista:
+
+| Número | Situação |
+| --- | --- |
+| `050` | Existiu como `050_webhook_status_integrity.sql` e o upstream **renumerou para `054`** (commit `99e272f`) |
+| `056` | Nunca existiu |
+
+Preencher essas lacunas com uma migração nova parece organizado e é um erro: o
+`apply-migrations.mjs` ordena por nome e registra a versão aplicada em
+`schema_migrations`, então um arquivo novo num número que já foi usado em outra
+linha do tempo pode ser considerado "já aplicado" e **nunca rodar** — falha
+silenciosa, exatamente o pior tipo. Numere sempre a partir do **maior existente + 1**,
+nunca num buraco.
+
 ---
 
 ## Decisões de produto já tomadas (não reverta)
