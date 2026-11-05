@@ -33,7 +33,8 @@ Fatos que você NÃO deve redescobrir nem contrariar:
   - origin   = github.com/bertuzzij/wacrm-adapto (PÚBLICO — todo commit é público)
   - upstream = github.com/ArnasDon/wacrm (somente leitura; push desabilitado de propósito)
   - branch de trabalho: main. Não existe branch de feature.
-  - 19 commits nossos vivem sobre o upstream. Sempre confira:
+  - Existe um conjunto de commits nossos sobre o upstream. NÃO decore o número —
+    ele muda a cada commit. Descubra com:
         git log --oneline upstream/main..main
   - O app roda em Docker num homelab; a VPS faz o túnel. Deploy NÃO é `git push`:
     é build de imagem + transferência + `docker compose up -d --force-recreate`.
@@ -50,7 +51,7 @@ PROIBIDO sem autorização explícita:
 
 FLUXO OBRIGATÓRIO ao terminar uma mudança:
   npm run typecheck          # tsc --noEmit, deve sair 0
-  npx vitest run             # 1835 passando + 3 falhas CONHECIDAS em currency.test.ts
+  npx vitest run             # todos passando + 3 falhas CONHECIDAS em currency.test.ts
   npm run build              # deve gerar .next/standalone/server.js
   node scripts/check-secrets.mjs   # deve sair 0; se bloquear, NÃO use --no-verify
   git add -A && git commit -F <arquivo> && git push origin main
@@ -123,7 +124,7 @@ git diff --stat upstream/main...main -- . ':(exclude)src/adapto' ':(exclude)mess
 Fonte: `CONTRIBUTING.md` do upstream, linha 90 — *"Commit-message first line is
 imperative + terse; the body explains the why, the diff shows the what."*
 
-### O padrão dos 19 commits deste fork
+### O padrão dos commits deste fork
 
 Primeira linha **imperativa, descritiva, sem prefixo**, capitalizada, sem ponto final:
 
@@ -139,7 +140,7 @@ Delete conversations, keeping linked deals
 | Regra | Detalhe |
 | --- | --- |
 | Idioma | **Inglês** no commit; **português** no produto e nos comentários de código |
-| Prefixo convencional | **Só 1 de 19** usa (`docs:`). O upstream usa `fix(...)`, mas nós usamos frase imperativa |
+| Prefixo convencional | **Quase nenhum** usa (`docs:` é a exceção, 1 caso). O upstream usa `fix(...)`, mas nós usamos frase imperativa |
 | Primeira linha | Imperativa, capitalizada, sem ponto final, **≤ 72 caracteres** (medido: média 59, máximo 71) |
 | Corpo | Explica **por que** a mudança existe; cita sintomas do usuário, causa raiz, e o que foi descartado |
 | Linha em branco | Obrigatória entre título e corpo |
@@ -228,7 +229,7 @@ decidido pelo dono do repositório — nunca um efeito colateral.
 
 ```bash
 npm run typecheck                  # tsc --noEmit → 0
-npx vitest run                     # 1835 passando; 3 falhas conhecidas
+npx vitest run                     # todos passando; 3 falhas conhecidas
 npm run build                      # gera .next/standalone/server.js
 node scripts/check-secrets.mjs     # 0 = liberado; bloqueou? descubra o motivo
 ```
