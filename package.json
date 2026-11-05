@@ -54,6 +54,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "emoji-picker-react": "^5.1.4",
     "linkify-react": "^4.4.0",
     "linkifyjs": "^4.4.0",
     "lucide-react": "^1.55.0",

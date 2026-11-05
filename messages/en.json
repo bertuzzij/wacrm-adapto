@@ -549,6 +549,13 @@
       "resumed": "AI resumed.",
       "updateError": "Couldn’t update the AI assistant.",
       "networkError": "Couldn’t reach the server."
+    },
+    "emojiPicker": {
+      "open": "Insert emoji",
+      "close": "Close emoji picker",
+      "search": "Search emoji",
+      "clear": "Clear search",
+      "loadFailed": "Could not load the emojis"
     }
   },
   "Contacts": {

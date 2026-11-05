@@ -39,6 +39,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useCan } from "@/hooks/use-can";
+import { EmojiButton } from "@/adapto/emoji-picker/picker";
+import { insertEmojiAtSelection } from "@/adapto/emoji-picker/insert-emoji";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -250,6 +252,29 @@ export function MessageComposer({
       setSending(false);
     }
   }, [text, sending, sessionExpired, onSend, replyTo?.id]);
+
+  // Insere o emoji onde o cursor está, como o WhatsApp faz. O `setTimeout`
+  // é necessário porque o foco volta para o textarea só depois do
+  // re-render que aplica o texto novo; focar antes disso perde o cursor.
+  const handlePickEmoji = useCallback(
+    (emoji: string) => {
+      const el = textareaRef.current;
+      const start = el?.selectionStart ?? text.length;
+      const end = el?.selectionEnd ?? text.length;
+
+      const result = insertEmojiAtSelection(text, emoji, start, end);
+      setText(result.text);
+
+      window.setTimeout(() => {
+        const node = textareaRef.current;
+        if (!node) return;
+        node.focus();
+        node.setSelectionRange(result.caret, result.caret);
+        adjustHeight();
+      }, 0);
+    },
+    [text, adjustHeight]
+  );
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -717,6 +742,10 @@ export function MessageComposer({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Emoji picker. Só o seletor; a inserção é feita no ponto do
+              cursor pelo handler abaixo. */}
+          <EmojiButton onPick={handlePickEmoji} disabled={inputsDisabled || busy} />
 
           <GatedButton
             variant="ghost"

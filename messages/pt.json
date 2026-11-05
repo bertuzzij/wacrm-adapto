@@ -549,6 +549,13 @@
       "resumed": "IA retomada.",
       "updateError": "Não foi possível atualizar o assistente de IA.",
       "networkError": "Não foi possível conectar ao servidor."
+    },
+    "emojiPicker": {
+      "open": "Inserir emoji",
+      "close": "Fechar seletor de emojis",
+      "search": "Buscar emoji",
+      "clear": "Limpar busca",
+      "loadFailed": "Não foi possível carregar os emojis"
     }
   },
   "Contacts": {
