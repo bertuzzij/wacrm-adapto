@@ -2,12 +2,15 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import {
   CONVERSATION_SELECT,
   matchesContactFilters,
   normalizeConversations,
 } from "@/lib/inbox/conversations";
 import { applyInboxFilter, type InboxFilter } from "@/lib/inbox/inbox-filters";
+import { expiringFilterApplies } from "@/adapto/messaging-window/config";
+import { useMessagingWindowEnabled } from "@/adapto/messaging-window/use-messaging-window";
 import { cn } from "@/lib/utils";
 import {
   STATUS_DOT_COLORS,
@@ -60,21 +63,34 @@ export function ConversationList({
   initialFilter = "all",
 }: ConversationListProps) {
   const t = useTranslations("Inbox.conversationList");
+  const { accountId } = useAuth();
+  const enforceWindow = useMessagingWindowEnabled(accountId);
+  // Com a janela de 24h desligada o filtro "Janela fechando" nunca
+  // encheria, e uma opção permanentemente vazia parece defeito.
+  const showExpiringFilter = expiringFilterApplies(enforceWindow);
   
   const FILTER_OPTIONS: { label: string; value: InboxFilter }[] = useMemo(() => [
     { label: t("filterAll"), value: "all" },
     { label: t("filterUnread"), value: "unread" },
     { label: t("filterWaiting"), value: "waiting" },
     { label: t("filterUnassigned"), value: "unassigned" },
-    { label: t("filterExpiring"), value: "expiring" },
+    ...(showExpiringFilter
+      ? [{ label: t("filterExpiring"), value: "expiring" as InboxFilter }]
+      : []),
     { label: t("filterOpen"), value: "open" },
     { label: t("filterPending"), value: "pending" },
     { label: t("filterClosed"), value: "closed" },
-  ], [t]);
+  ], [t, showExpiringFilter]);
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<InboxFilter>(initialFilter);
   const [now, setNow] = useState(() => Date.now());
+
+  // Se a janela foi desligada com o filtro "Janela fechando" selecionado,
+  // a lista ficaria presa num filtro que não existe mais no seletor.
+  useEffect(() => {
+    if (!showExpiringFilter && filter === "expiring") setFilter("all");
+  }, [showExpiringFilter, filter]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 60_000);

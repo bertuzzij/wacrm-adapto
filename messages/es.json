@@ -409,7 +409,8 @@
       "expired": "Expirada",
       "xhRemaining": "{hours}h restantes",
       "xmRemaining": "{minutes}min restantes",
-      "noCustomerMessages": "Sin mensajes del cliente"
+      "noCustomerMessages": "Sin mensajes del cliente",
+      "noWindow": "Sin ventana de mensajes"
     },
     "composer": {
       "draftHint": "Toca ✨ para redactar una respuesta con IA; puedes editarla antes de enviarla",
@@ -2337,6 +2338,21 @@
       "syncResultNoPhoto": "{count} contacto(s) no tienen foto en WhatsApp",
       "syncResultPreserved": "{count} nombre(s) preservado(s) (editados por ti)",
       "syncResultFailed": "{count} fallo(s)"
+    },
+    "messagingWindow": {
+      "title": "Ventana de mensajes",
+      "description": "Controla la regla de 24 horas en el campo de escritura de la bandeja de entrada.",
+      "windowLabel": "Aplicar la ventana de 24 horas",
+      "windowDesc": "Meta solo acepta texto libre hasta 24 horas después del último mensaje del cliente.",
+      "enabledLabel": "Activada — el campo se bloquea pasadas 24 horas",
+      "disabledLabel": "Desactivada — el campo queda siempre libre",
+      "hint": "Si usas la API oficial de Meta, déjala activada: fuera de la ventana es Meta quien rechaza el envío. WAHA no tiene esa ventana.",
+      "adminOnlyHint": "Solo los administradores de la cuenta pueden cambiar esta opción.",
+      "save": "Guardar",
+      "saving": "Guardando...",
+      "saveFailed": "No se pudo guardar la configuración",
+      "saveSuccess": "Ventana de mensajes actualizada",
+      "loadFailed": "No se pudo cargar la configuración"
     }
   },
   "SignupPage": {

@@ -409,7 +409,8 @@
       "expired": "만료됨",
       "xhRemaining": "{hours}시간 남음",
       "xmRemaining": "{minutes}분 남음",
-      "noCustomerMessages": "고객 메시지 없음"
+      "noCustomerMessages": "고객 메시지 없음",
+      "noWindow": "메시지 제한 없음"
     },
     "composer": {
       "draftHint": "✨를 눌러 AI로 답장 초안을 작성하세요 — 보내기 전에 수정할 수 있습니다",
@@ -2337,6 +2338,21 @@
       "syncResultNoPhoto": "연락처 {count}개는 WhatsApp에 사진이 없습니다",
       "syncResultPreserved": "이름 {count}개 유지됨 (직접 수정함)",
       "syncResultFailed": "실패 {count}건"
+    },
+    "messagingWindow": {
+      "title": "메시지 전송 가능 시간",
+      "description": "받은편지함 입력창의 24시간 규칙을 제어합니다.",
+      "windowLabel": "24시간 제한 적용",
+      "windowDesc": "Meta는 고객의 마지막 메시지로부터 24시간 이내에만 자유 형식 텍스트를 허용합니다.",
+      "enabledLabel": "켜짐 — 24시간이 지나면 입력창이 잠깁니다",
+      "disabledLabel": "꺼짐 — 입력창이 항상 열려 있습니다",
+      "hint": "Meta 공식 API를 사용한다면 켜 두세요. 시간이 지나면 Meta가 전송을 거부합니다. WAHA에는 이 제한이 없습니다.",
+      "adminOnlyHint": "계정 관리자만 이 옵션을 변경할 수 있습니다.",
+      "save": "저장",
+      "saving": "저장 중...",
+      "saveFailed": "설정을 저장하지 못했습니다",
+      "saveSuccess": "메시지 전송 가능 시간이 업데이트되었습니다",
+      "loadFailed": "설정을 불러오지 못했습니다"
     }
   },
   "SignupPage": {

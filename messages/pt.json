@@ -409,7 +409,8 @@
       "expired": "Expirada",
       "xhRemaining": "{hours}h restantes",
       "xmRemaining": "{minutes}min restantes",
-      "noCustomerMessages": "Nenhuma mensagem do cliente"
+      "noCustomerMessages": "Nenhuma mensagem do cliente",
+      "noWindow": "Sem janela de mensagens"
     },
     "composer": {
       "draftHint": "Toque em ✨ para redigir uma resposta com IA — você pode editá-la antes de enviar",
@@ -2337,6 +2338,21 @@
       "syncResultNoPhoto": "{count} contato(s) não têm foto no WhatsApp",
       "syncResultPreserved": "{count} nome(s) preservado(s) (editados por você)",
       "syncResultFailed": "{count} falha(s)"
+    },
+    "messagingWindow": {
+      "title": "Janela de mensagens",
+      "description": "Controla a regra de 24 horas no campo de digitação da caixa de entrada.",
+      "windowLabel": "Aplicar a janela de 24 horas",
+      "windowDesc": "A Meta só aceita texto livre até 24 horas depois da última mensagem do cliente.",
+      "enabledLabel": "Ligada — o campo é bloqueado passadas 24 horas",
+      "disabledLabel": "Desligada — o campo fica sempre liberado",
+      "hint": "Se você usa a API oficial da Meta, deixe ligada: fora da janela é a própria Meta que recusa o envio. O WAHA não tem essa janela.",
+      "adminOnlyHint": "Somente administradores da conta podem alterar esta opção.",
+      "save": "Salvar",
+      "saving": "Salvando...",
+      "saveFailed": "Não foi possível salvar a configuração",
+      "saveSuccess": "Janela de mensagens atualizada",
+      "loadFailed": "Não foi possível carregar a configuração"
     }
   },
   "SignupPage": {

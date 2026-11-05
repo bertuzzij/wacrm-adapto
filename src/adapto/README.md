@@ -26,10 +26,12 @@ estiver, ou o código deveria estar aqui, ou a lista está desatualizada.
 
 | Arquivo | Edição | Por quê |
 | --- | --- | --- |
-| `src/components/settings/settings-sections.ts` | `'waha'` na lista + entrada em `SECTION_META` + 1 import de ícone | registra a aba no rail |
-| `src/app/(dashboard)/settings/page.tsx` | um `import` + uma entrada no mapa `panel` | monta o painel |
+| `src/components/settings/settings-sections.ts` | `'waha'` e `'messaging-window'` na lista + entradas em `SECTION_META` + imports de ícone | registra as abas no rail |
+| `src/app/(dashboard)/settings/page.tsx` | dois `import` + duas entradas no mapa `panel` | monta os painéis |
+| `src/components/inbox/message-thread.tsx` | o `useMemo` da janela de 24h passou a delegar para `src/adapto/messaging-window/config.ts` | a regra da Meta precisa ser opcional no modo WAHA |
+| `src/components/inbox/conversation-list.tsx` | o chip "Janela fechando" some quando a janela está desligada | filtro que nunca enche parece defeito |
 
-Total: **5 linhas**. Vale conferir com:
+Total: **~20 linhas**. Vale conferir com:
 
 ```bash
 git diff --stat upstream/main...main -- . ':(exclude)src/adapto' ':(exclude)messages'
@@ -38,6 +40,19 @@ git diff --stat upstream/main...main -- . ':(exclude)src/adapto' ':(exclude)mess
 Os dicionários em `messages/*.json` também são arquivos do upstream, mas a edição
 é aditiva: cada um ganha um bloco `Settings.waha` novo, sem tocar em chave
 existente. Conflito ali só acontece se o upstream reescrever a árvore inteira.
+
+O módulo `messaging-window` segue a mesma ideia: ganha `Settings.messagingWindow`
+e a chave `Inbox.sessionTimer.noWindow`.
+
+## Módulos
+
+| Diretório | O que resolve |
+| --- | --- |
+| `contact-sync/` | nome e foto de contato importados do WhatsApp |
+| `inbox/` | sino de não-lidas, status da conversa, resumos |
+| `waha-connection/` | painel de conexão, QR, reconexão, métricas |
+| `waha-interactive/` | botões/lista nativos com fallback para enquete |
+| `messaging-window/` | interruptor da janela de 24h da Meta |
 
 ## Servidor e cliente
 

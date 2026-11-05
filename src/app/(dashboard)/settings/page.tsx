@@ -18,6 +18,7 @@ import { QuickRepliesManager } from '@/components/settings/quick-replies-manager
 import { FieldsAndTagsPanel } from '@/components/settings/fields-and-tags-panel';
 import { DealsSettings } from '@/components/settings/deals-settings';
 import { InboxSettings } from '@/components/settings/inbox-settings';
+import { MessagingWindowPanel } from '@/adapto/messaging-window/panel';
 import { MembersTab } from '@/components/settings/members-tab';
 import { ApiKeysSettings } from '@/components/settings/api-keys-settings';
 import {
@@ -82,6 +83,7 @@ function SettingsPageInner() {
     'quick-replies': <QuickRepliesManager />,
     fields: <FieldsAndTagsPanel />,
     inbox: <InboxSettings />,
+    'messaging-window': <MessagingWindowPanel />,
     deals: <DealsSettings />,
     members: <MembersTab />,
     api: <ApiKeysSettings />,

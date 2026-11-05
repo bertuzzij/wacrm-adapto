@@ -409,7 +409,8 @@
       "expired": "Expired",
       "xhRemaining": "{hours}h remaining",
       "xmRemaining": "{minutes}m remaining",
-      "noCustomerMessages": "No customer messages"
+      "noCustomerMessages": "No customer messages",
+      "noWindow": "No messaging window"
     },
     "composer": {
       "draftHint": "Tap the ✨ to draft a reply with AI — you can edit it before sending",
@@ -2337,6 +2338,21 @@
       "syncResultNoPhoto": "{count} contact(s) have no photo on WhatsApp",
       "syncResultPreserved": "{count} name(s) preserved (edited by you)",
       "syncResultFailed": "{count} failure(s)"
+    },
+    "messagingWindow": {
+      "title": "Messaging window",
+      "description": "Controls the 24-hour rule on the inbox composer.",
+      "windowLabel": "Enforce the 24-hour window",
+      "windowDesc": "Meta only accepts free-form text within 24 hours of the last customer message.",
+      "enabledLabel": "On — the composer locks after 24 hours",
+      "disabledLabel": "Off — the composer stays unlocked",
+      "hint": "If you use Meta's official API, keep this on: outside the window Meta itself rejects the send. WAHA has no such window.",
+      "adminOnlyHint": "Only account administrators can change this option.",
+      "save": "Save",
+      "saving": "Saving...",
+      "saveFailed": "Could not save the setting",
+      "saveSuccess": "Messaging window updated",
+      "loadFailed": "Could not load the setting"
     }
   },
   "SignupPage": {

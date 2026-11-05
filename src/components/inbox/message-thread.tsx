@@ -28,7 +28,7 @@ import {
   PanelRightOpen,
   PanelRightClose,
 } from "lucide-react";
-import { format, isToday, isYesterday, differenceInHours } from "date-fns";
+import { format, isToday, isYesterday } from "date-fns";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -62,6 +62,8 @@ import {
 } from "@/lib/whatsapp/template-message-view";
 import { contactHandle } from "@/lib/whatsapp/wa-identity";
 import { resolveAssignmentResult } from "@/lib/inbox/assignment";
+import { resolveMessagingWindow } from "@/adapto/messaging-window/config";
+import { useMessagingWindowEnabled } from "@/adapto/messaging-window/use-messaging-window";
 import {
   businessReactionOn,
   withBusinessReaction,
@@ -212,7 +214,9 @@ export function MessageThread({
   const tTimer = useTranslations("Inbox.sessionTimer");
   const tQuote = useTranslations("Inbox.replyQuote");
 
-  const { user } = useAuth();
+  const { user, accountId } = useAuth();
+  // Ligado por omissão: até a leitura chegar, vale a regra que já existia.
+  const enforceWindow = useMessagingWindowEnabled(accountId);
   const { getPresence, getRow, now } = usePresence();
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -311,7 +315,10 @@ export function MessageThread({
     };
   }, [profilesVersion]);
 
-  // 24-hour session timer
+  // Janela de mensagens de 24h. A conta decide se ela vale: no modo WAHA
+  // não existe janela, e bloquear o compositor ali impede responder uma
+  // conversa que a Meta aceitaria. A aritmética vive em
+  // src/adapto/messaging-window/config.ts, testada sem rede.
   const sessionInfo = useMemo(() => {
     if (!messages.length) return { expired: false, remaining: "" };
 
@@ -320,23 +327,26 @@ export function MessageThread({
       .reverse()
       .find((m) => m.sender_type === "customer");
 
-    if (!lastCustomerMsg) return { expired: true, remaining: tTimer("noCustomerMessages") };
+    const state = resolveMessagingWindow(
+      enforceWindow,
+      lastCustomerMsg ? new Date(lastCustomerMsg.created_at) : null,
+      new Date()
+    );
 
-    const hoursSince = differenceInHours(new Date(), new Date(lastCustomerMsg.created_at));
-    const expired = hoursSince >= 24;
-
-    if (expired) {
-      return { expired: true, remaining: tTimer("expired") };
-    }
-
-    const hoursLeft = 24 - hoursSince;
-    const remaining =
-      hoursLeft >= 1
-        ? tTimer("xhRemaining", { hours: Math.floor(hoursLeft) })
-        : tTimer("xmRemaining", { minutes: Math.floor(hoursLeft * 60) });
-
-    return { expired, remaining };
-  }, [messages, tTimer]);
+    return {
+      expired: state.expired,
+      // next-intl recusa valor `undefined` na interpolação, então cada
+      // rótulo recebe só os números que a sua frase realmente usa.
+      remaining: tTimer(
+        state.labelKey,
+        state.labelKey === "xhRemaining"
+          ? { hours: state.hours ?? 0 }
+          : state.labelKey === "xmRemaining"
+            ? { minutes: state.minutes ?? 0 }
+            : undefined
+      ),
+    };
+  }, [messages, tTimer, enforceWindow]);
 
   // Store latest callback in a ref so fetchMessages doesn't need to
   // depend on `onMessagesLoaded` — otherwise parent re-renders cause
