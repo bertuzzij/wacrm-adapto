@@ -69,3 +69,9 @@ cloudflared-token*
 *.pfx
 !**/*.pub
 
+# image exports for the deploy (`docker save` writes these next to the
+# repo). ~250 MB each — never trackable, and stale copies shadow the real
+# one. Deploy is build + `docker save` + transfer, not a commit.
+wacrm.tar
+*.tar
+
