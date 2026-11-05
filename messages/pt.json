@@ -1997,7 +1997,8 @@
       "deals": "Negócios e moeda",
       "inbox": "Caixa de entrada",
       "members": "Membros da equipe",
-      "api": "Chaves de API"
+      "api": "Chaves de API",
+      "messaging-window": "Janela de mensagens"
     },
     "groups": {
       "account": "Conta",
