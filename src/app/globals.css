@@ -263,10 +263,29 @@ html[data-theme="rose"] {
  * O `max()` evita que um inset zero zere o padding normal.
  * ============================================================ */
 @layer utilities {
-  /* Altura útil da tela, dinâmica (acompanha a barra de endereço). */
+  /* Altura útil da tela, dinâmica (acompanha a barra de endereço).
+   *
+   * O par `100vh` + `100dvh` é intencional e NÃO é redundância: o
+   * minificador do Turbopack colapsa as duas declarações e mantém só a
+   * última, então o fallback vive num `@supports`. Sem ele, um navegador
+   * sem suporte a `dvh` (Safari < 15.4, Chrome < 108) descartaria a regra
+   * inteira e o app ficaria sem altura nenhuma. */
   .h-app {
     height: 100vh;
-    height: 100dvh;
+  }
+  @supports (height: 100dvh) {
+    .h-app {
+      height: 100dvh;
+    }
+  }
+
+  .min-h-app {
+    min-height: 100vh;
+  }
+  @supports (height: 100dvh) {
+    .min-h-app {
+      min-height: 100dvh;
+    }
   }
 
   /* Respiro para o conteúdo não ficar sob o notch / barra de gestos. */

@@ -55,14 +55,23 @@ export function buildManifest(): Manifest {
     start_url: "/dashboard",
     scope: "/",
     display: "standalone",
-    // `minimal-ui` fica como fallback para navegadores que não conhecem
-    // "standalone" — a ordem é preferência, não exigência.
-    display_override: ["standalone", "minimal-ui"],
+    // `display_override` foi deliberadamente OMITIDO.
+    //
+    // Motivo: o Safari/iOS não suporta o campo (usa só `display`), e no
+    // Android `standalone` já é o valor de `display` — uma cadeia
+    // `["standalone", "minimal-ui"]` não mudaria nada em nenhum dos dois e
+    // só adicionaria JSON. "window-controls-overlay" é desktop-only e
+    // exigiria construir uma barra de título própria. Se um dia o desktop
+    // virar prioridade, aí sim: ["window-controls-overlay", "standalone"].
     background_color: PWA_BACKGROUND_COLOR,
     theme_color: PWA_THEME_COLOR,
     lang: "pt-BR",
     dir: "ltr",
     categories: ["business", "productivity"],
+    // `orientation` omitido de propósito: o Safari não suporta o campo, e
+    // travar em retrato no Android atrapalha tablet e digitação deitada —
+    // exatamente o caso errado para um app de mensagens.
+    //
     // Não temos app nativo na loja; apontar para um é o que faria o Chrome
     // esconder o botão "Instalar".
     prefer_related_applications: false,

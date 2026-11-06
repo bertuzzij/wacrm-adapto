@@ -10,6 +10,7 @@ import {
 } from "@/lib/inbox/conversations";
 import type { Conversation, Message, Contact, ConversationStatus } from "@/types";
 import { useRealtime } from "@/hooks/use-realtime";
+import { useKeyboardInset } from "@/adapto/pwa/use-keyboard-inset";
 import { ConversationList } from "@/components/inbox/conversation-list";
 import { parseInboxFilter } from "@/lib/inbox/inbox-filters";
 import { MessageThread } from "@/components/inbox/message-thread";
@@ -647,6 +648,12 @@ function InboxPageInner() {
   // before, unchanged.
   const hasActiveConv = !!activeConversation;
 
+  // Altura do teclado virtual (0 fora do iOS/sem teclado aberto).
+  // O `interactive-widget=resizes-content` do layout raiz resolve o teclado
+  // no Android, mas o Safari o ignora — sem este ajuste o composer fica
+  // escondido atrás do teclado no iPhone, e o usuário digita às cegas.
+  const keyboardInset = useKeyboardInset();
+
   return (
     <div
       className="-m-4 flex flex-col overflow-hidden sm:-m-6"
@@ -663,8 +670,7 @@ function InboxPageInner() {
       // que o shell soma embaixo — assim o composer encosta na borda real
       // sem ficar atrás do indicador de home.
       style={{
-        height:
-          "calc(100dvh - 3.5rem - env(safe-area-inset-top, 0px))",
+        height: `calc(100dvh - 3.5rem - env(safe-area-inset-top, 0px) - ${keyboardInset}px)`,
         marginBottom:
           "calc(-1rem - env(safe-area-inset-bottom, 0px))",
       }}
