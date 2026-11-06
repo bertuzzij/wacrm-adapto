@@ -77,6 +77,8 @@ export function ConversationList({
     ...(showExpiringFilter
       ? [{ label: t("filterExpiring"), value: "expiring" as InboxFilter }]
       : []),
+    { label: t("filterGroups"), value: "groups" },
+    { label: t("filterDirect"), value: "direct" },
     { label: t("filterOpen"), value: "open" },
     { label: t("filterPending"), value: "pending" },
     { label: t("filterClosed"), value: "closed" },

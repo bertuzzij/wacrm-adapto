@@ -365,7 +365,9 @@
         "open": "Abierta",
         "pending": "Pendiente",
         "closed": "Cerrada"
-      }
+      },
+      "filterGroups": "Grupos",
+      "filterDirect": "Conversaciones"
     },
     "messageThread": {
       "backToConversations": "Volver a las conversaciones",
@@ -403,7 +405,8 @@
       "assigneeNoLongerMember": "Ese compañero ya no es miembro de esta cuenta",
       "networkError": "error de red",
       "documentFallback": "Documento",
-      "you": "Tú"
+      "you": "Tú",
+      "groupReadOnly": "Esta es una conversación de grupo. La lectura está disponible; el envío de mensajes a grupos aún no."
     },
     "sessionTimer": {
       "expired": "Expirada",

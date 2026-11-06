@@ -75,3 +75,9 @@ cloudflared-token*
 wacrm.tar
 *.tar
 
+# local pre-change snapshots taken while operating on production data
+# (the previous phone_number_id, before a number swap). Operational, not
+# source — the value is per-instance and must not be published.
+.phone-number-id.backup.txt
+*.backup.txt
+

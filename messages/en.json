@@ -365,7 +365,9 @@
         "open": "Open",
         "pending": "Pending",
         "closed": "Closed"
-      }
+      },
+      "filterGroups": "Groups",
+      "filterDirect": "Direct chats"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",
@@ -403,7 +405,8 @@
       "assigneeNoLongerMember": "That teammate is no longer a member of this account",
       "networkError": "network error",
       "documentFallback": "Document",
-      "you": "You"
+      "you": "You",
+      "groupReadOnly": "This is a group conversation. Reading is available; sending messages to groups is not supported yet."
     },
     "sessionTimer": {
       "expired": "Expired",

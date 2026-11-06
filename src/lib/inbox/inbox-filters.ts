@@ -6,6 +6,8 @@ export const INBOX_FILTERS = [
   "waiting",
   "unassigned",
   "expiring",
+  "groups",
+  "direct",
   "open",
   "pending",
   "closed",
@@ -52,6 +54,13 @@ export function applyInboxFilter(
       return conversations.filter(isAwaitingReply).sort(byOldestInbound);
     case "expiring":
       return conversations.filter((c) => isWindowClosing(c, now)).sort(byOldestInbound);
+    case "groups":
+      return conversations.filter((c) => c.kind === "group");
+    case "direct":
+      // `kind` ausente = linha anterior à migração 063, que só tinha
+      // conversa individual. Tratar como 'direct' evita esconder conversas
+      // antigas do filtro.
+      return conversations.filter((c) => (c.kind ?? "direct") === "direct");
     case "unassigned":
       return conversations.filter((c) => c.status === "open" && !c.assigned_agent_id);
     default:

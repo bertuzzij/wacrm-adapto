@@ -619,7 +619,8 @@ async function processMessage(
   const convResult = await findOrCreateConversation(
     accountId,
     configOwnerUserId,
-    contactRecord.id
+    contactRecord.id,
+    identity.isGroup ? 'group' : 'direct',
   )
   if (!convResult) return
   const conversation = convResult.conversation
@@ -1321,6 +1322,7 @@ async function findOrCreateConversation(
   accountId: string,
   configOwnerUserId: string,
   contactId: string,
+  kind: 'direct' | 'group' = 'direct',
 ) {
   // Look for an existing conversation in this account, oldest-first.
   //
@@ -1354,12 +1356,17 @@ async function findOrCreateConversation(
 
   // Create new conversation. Same tenancy + audit split as
   // findOrCreateContact above.
+  //
+  // `kind` distingue grupo de conversa individual (migração 063). Não é
+  // derivado do telefone: o esquema exige `contacts.phone` para os dois,
+  // e grupo usa a chave `group:<jid>`.
   const { data: newConv, error: createError } = await supabaseAdmin()
     .from('conversations')
     .insert({
       account_id: accountId,
       user_id: configOwnerUserId,
       contact_id: contactId,
+      kind,
     })
     .select()
     .single()

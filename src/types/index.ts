@@ -168,6 +168,9 @@ export interface ContactNote {
 
 export type ConversationStatus = 'open' | 'pending' | 'closed';
 
+/** Conversa individual (um contato) ou de grupo do WhatsApp. */
+export type ConversationKind = 'direct' | 'group';
+
 export interface Conversation {
   id: string;
   user_id: string;
@@ -180,6 +183,14 @@ export interface Conversation {
   last_inbound_at?: string | null;
   last_reply_at?: string | null;
   closed_at?: string | null;
+  /**
+   * Conversa individual ou de grupo (migração 063).
+   *
+   * Opcional de propósito: linhas lidas antes da migração chegam sem o
+   * campo, e o código trata a ausência como 'direct' — era o único tipo
+   * que existia.
+   */
+  kind?: ConversationKind;
   created_at: string;
   updated_at: string;
   contact?: Contact;

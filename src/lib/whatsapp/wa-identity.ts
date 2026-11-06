@@ -32,6 +32,7 @@ import {
   normalizePhone,
   sanitizePhoneForMeta,
 } from './phone-utils'
+import { isGroupPhoneKey } from '@/adapto/whatsapp-groups/identity'
 
 /** The `contacts[]` entry Meta pairs with an inbound message. */
 export interface WaContactPayload {
@@ -63,6 +64,17 @@ export interface WaIdentity {
   waUsername: string | null
   /** Profile display name, or `''`. */
   name: string
+  /**
+   * Whether this is a group conversation.
+   *
+   * A group arrives with `phone` already holding the `group:<jid>` key
+   * (see src/adapto/whatsapp-groups/identity.ts), which `normalizePhone`
+   * must NOT touch — it strips every non-digit and would destroy it. So
+   * `resolveInboundIdentity` detects the group first and passes the key
+   * through verbatim; this flag is what tells the rest of the pipeline
+   * which of the two shapes `phone` holds.
+   */
+  isGroup?: boolean
 }
 
 /**
@@ -110,8 +122,25 @@ export function resolveInboundIdentity(
   message: WaMessageIdentityPayload,
   contact?: WaContactPayload
 ): WaIdentity {
+  const rawFrom = message.from ?? contact?.wa_id ?? ''
+
+  // Grupo chega aqui com o `wa_id` já convertido para `group:<jid>` pelo
+  // webhook WAHA. `normalizePhone` apagaria tudo que não é dígito e
+  // deixaria uma sequência numérica sem significado (e colidível), então
+  // a chave passa intacta e o fluxo segue pelo ramo de grupo.
+  if (isGroupPhoneKey(rawFrom)) {
+    return {
+      phone: rawFrom.trim(),
+      waUserId: null,
+      waParentUserId: null,
+      waUsername: null,
+      name: contact?.profile?.name?.trim() ?? '',
+      isGroup: true,
+    }
+  }
+
   return {
-    phone: normalizePhone(message.from ?? contact?.wa_id ?? ''),
+    phone: normalizePhone(rawFrom),
     waUserId: cleanBsuid(message.from_user_id) ?? cleanBsuid(contact?.user_id),
     waParentUserId:
       cleanBsuid(message.from_parent_user_id) ??

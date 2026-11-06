@@ -51,6 +51,33 @@ describe('isBusinessScopedUserId', () => {
 })
 
 describe('resolveInboundIdentity', () => {
+  it('passes a group key through untouched and flags it', () => {
+    // O webhook WAHA entrega o grupo já como `group:<jid>`. `normalizePhone`
+    // apagaria o prefixo e o `@g.us`, sobrando uma sequência de dígitos sem
+    // significado — e dois grupos diferentes poderiam colidir. A chave tem
+    // que passar verbatim.
+    const identity = resolveInboundIdentity(
+      { from: 'group:5511000000001-1000000001@g.us' },
+      { profile: { name: '7138 - Canedo Cotrim' }, wa_id: 'group:5511000000001-1000000001@g.us' }
+    )
+
+    expect(identity.phone).toBe('group:5511000000001-1000000001@g.us')
+    expect(identity.isGroup).toBe(true)
+    expect(identity.name).toBe('7138 - Canedo Cotrim')
+  })
+
+  it('a group key normalizes to more digits than E.164 allows, so it can never collide with a phone', () => {
+    // `findExistingContact` busca por `phone_normalized` (dígitos apenas).
+    // A chave de grupo vira 23 dígitos; o teto E.164 é 15. É isso que
+    // garante que um grupo nunca dispute o índice com uma pessoa.
+    const identity = resolveInboundIdentity({
+      from: 'group:5511000000001-1000000001@g.us',
+    })
+    const digits = identity.phone.replace(/\D/g, '')
+
+    expect(digits.length).toBeGreaterThan(15)
+  })
+
   it('reads the legacy phone-only payload unchanged', () => {
     expect(
       resolveInboundIdentity({ from: '15551230000' }, LEGACY_CONTACT)

@@ -1342,17 +1342,26 @@ export function MessageThread({
         }}
       />
 
-      {/* Composer */}
-      <MessageComposer
-        conversationId={conversation.id}
-        sessionExpired={sessionInfo.expired}
-        onSend={handleSend}
-        onSendMedia={handleSendMedia}
-        onSendInteractive={handleSendInteractive}
-        onOpenTemplates={handleOpenTemplates}
-        replyTo={replyTo}
-        onClearReply={() => setReplyTo(null)}
-      />
+      {/* Composer. Em grupo, o envio ainda não é suportado: responder
+          vai para todos os participantes, sem desfazer, e essa decisão
+          não cabe a um campo habilitado por omissão. O aviso explica em
+          vez de deixar o usuário digitar e falhar. */}
+      {conversation.kind === "group" ? (
+        <div className="border-t border-border bg-muted/40 px-4 py-3 text-center text-sm text-muted-foreground">
+          {t("groupReadOnly")}
+        </div>
+      ) : (
+        <MessageComposer
+          conversationId={conversation.id}
+          sessionExpired={sessionInfo.expired}
+          onSend={handleSend}
+          onSendMedia={handleSendMedia}
+          onSendInteractive={handleSendInteractive}
+          onOpenTemplates={handleOpenTemplates}
+          replyTo={replyTo}
+          onClearReply={() => setReplyTo(null)}
+        />
+      )}
 
       <TemplatePicker
         open={templateModalOpen}

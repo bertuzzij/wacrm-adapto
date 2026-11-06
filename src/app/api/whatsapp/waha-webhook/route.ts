@@ -18,6 +18,12 @@ import {
   isWahaMode,
   wahaResolveLid,
 } from '@/lib/whatsapp/waha'
+import {
+  groupDisplayName,
+  groupPhoneKey,
+  isGroupChatId,
+} from '@/adapto/whatsapp-groups/identity'
+import { fetchGroupName } from '@/adapto/whatsapp-groups/server'
 
 /**
  * WAHA → CRM bridge.
@@ -168,9 +174,20 @@ function tokenOk(request: Request): boolean {
   return crypto.timingSafeEqual(a, b)
 }
 
+/**
+ * Chats que o CRM não trata como conversa.
+ *
+ * `@g.us` (grupo) deixou de estar nesta lista: grupos agora viram
+ * conversa na inbox, em modo somente leitura. Ver
+ * `src/adapto/whatsapp-groups/identity.ts` para como o id de grupo é
+ * acomodado num schema que exige `contacts.phone`.
+ *
+ * `status@` e `@newsletter` continuam fora: não são conversa com
+ * ninguém, e não há para onde atribuí-los.
+ */
 function isIgnoredChat(chatId: string | undefined): boolean {
   if (!chatId) return true
-  return chatId.endsWith('@g.us') || chatId.startsWith('status@') || chatId.endsWith('@newsletter')
+  return chatId.startsWith('status@') || chatId.endsWith('@newsletter')
 }
 
 /** Real phone digits for a chat id, resolving `@lid` identifiers when needed. */
@@ -357,6 +374,26 @@ async function toMetaBody(event: WahaEvent): Promise<Record<string, unknown> | n
 
   if (event.event === 'message' || event.event === 'message.any') {
     if (payload.fromMe || isIgnoredChat(payload.from)) return null
+
+    // Grupo: o identificador é o JID do grupo (não um telefone) e o nome
+    // vem do endpoint de grupos do WAHA — o evento de mensagem não o
+    // carrega (ver src/adapto/whatsapp-groups/server.ts).
+    if (isGroupChatId(payload.from)) {
+      const groupKey = groupPhoneKey(payload.from!)
+      const message = buildMetaMessage(payload, groupKey)
+      if (!message) return null
+      const groupName = await fetchGroupName(payload.from!)
+      return wrap({
+        contacts: [
+          {
+            profile: { name: groupDisplayName(groupName) },
+            wa_id: groupKey,
+          },
+        ],
+        messages: [message],
+      })
+    }
+
     const phone = await phoneFor(payload.from!, payload)
     if (!phone) {
       console.warn('[waha-webhook] could not resolve a phone number for', payload.from)
