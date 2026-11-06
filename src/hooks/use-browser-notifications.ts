@@ -22,6 +22,7 @@ import {
   primeAudio,
   readSoundPref,
 } from "@/adapto/notifications/sound";
+import { showDeviceNotification } from "@/adapto/pwa/notify";
 
 const serverSnapshot = () => false;
 
@@ -129,21 +130,19 @@ export function useBrowserNotifications(): void {
       );
 
       try {
-        const notification = new Notification(title, {
+        // Rota pelo service worker quando existe (ver src/adapto/pwa/notify.ts).
+        // `new Notification` direto na página LANÇA no Android Chrome, que é
+        // justamente onde o aviso mais importa — no PWA instalado.
+        await showDeviceNotification(title, {
           body,
           // One alert per conversation: a second message from the same
           // customer replaces the first instead of stacking.
           tag: msg.conversation_id,
-          icon: "/icon",
+          url: conversationHref(msg.conversation_id),
         });
-        notification.onclick = () => {
-          window.focus();
-          router.push(conversationHref(msg.conversation_id));
-          notification.close();
-        };
       } catch (err) {
-        // Some browsers throw from the constructor (e.g. Android Chrome
-        // requires a service worker). Non-fatal.
+        // Non-fatal: um aviso que não aparece não pode interromper o
+        // listener de realtime.
         console.error("[useBrowserNotifications] failed to show:", err);
       }
     };
@@ -186,5 +185,36 @@ export function useBrowserNotifications(): void {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [enabled, router, channelSuffix]);
+  }, [enabled, channelSuffix]);
+
+  // Clique no aviso exibido pelo service worker.
+  //
+  // O SW não pode navegar sozinho dentro de uma aba já aberta sem perder o
+  // estado do inbox, então ele manda a rota por postMessage e a navegação
+  // acontece aqui, pelo router do Next (transição suave em vez de reload).
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: string; url?: string } | null;
+      if (data?.type !== "navigate" || !data.url) return;
+
+      // Só caminhos internos: um `url` externo num postMessage viraria
+      // navegação arbitrária.
+      let target: URL;
+      try {
+        target = new URL(data.url, window.location.origin);
+      } catch {
+        return;
+      }
+      if (target.origin !== window.location.origin) return;
+
+      router.push(`${target.pathname}${target.search}`);
+    };
+
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", onMessage);
+    };
+  }, [router]);
 }

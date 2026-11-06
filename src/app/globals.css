@@ -243,3 +243,51 @@ html[data-theme="rose"] {
     @apply font-sans;
   }
 }
+
+/* ============================================================
+ * PWA — altura e áreas seguras
+ *
+ * Por que estes utilitários existem aqui e não em componentes:
+ *
+ *   1. `100vh` MENTE no celular. No Chrome Android ele mede a janela
+ *      assumindo a barra de endereço recolhida; com a barra visível, o
+ *      layout fica ~56px mais alto que a tela e o composer do inbox sai
+ *      pela parte de baixo. `100dvh` acompanha o viewport que existe de
+ *      verdade e se ajusta quando a barra recolhe.
+ *   2. No PWA instalado (iOS/Android, `display: standalone` + `viewport-fit=cover`)
+ *      o conteúdo passa por baixo do notch e da barra de gestos. Sem
+ *      `env(safe-area-inset-*)` o header fica embaixo do relógio e o
+ *      composer embaixo do indicador de home.
+ *
+ * `env()` devolve 0 quando não há recorte, então isto é seguro no desktop.
+ * O `max()` evita que um inset zero zere o padding normal.
+ * ============================================================ */
+@layer utilities {
+  /* Altura útil da tela, dinâmica (acompanha a barra de endereço). */
+  .h-app {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* Respiro para o conteúdo não ficar sob o notch / barra de gestos. */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pl-safe {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+  .pr-safe {
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  /* Versão combinada: inset + um padding mínimo de 0. Como usamos junto
+     com classes de padding do Tailwind, o inset entra por `padding-*`
+     adicional em quem precisa. */
+  .px-safe {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+}

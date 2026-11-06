@@ -154,8 +154,48 @@ const nextConfig: NextConfig = {
         source: "/api/:path*",
         headers: [{ key: "Cache-Control", value: "no-store" }],
       },
+      /**
+       * Service worker (public/sw.js).
+       *
+       * Dois headers são obrigatórios aqui, não cosméticos:
+       *
+       *   Cache-Control: no-store
+       *     O navegador revalida o SW a cada navegação. Sem isso, um worker
+       *     antigo pode ficar meses no disco (o default de um arquivo
+       *     estático é cacheável), e o usuário nunca recebe a correção.
+       *
+       *   Content-Type: application/javascript
+       *     O Next serve `.js` de `public/` corretamente, mas o header
+       *     explícito evita que um proxy na frente da instância decida
+       *     diferente. Um SW com MIME errado é recusado com
+       *     "The script has an unsupported MIME type".
+       *
+       * O `Service-Worker-Allowed` não é necessário porque o escopo é `/`,
+       * que é o diretório do próprio arquivo.
+       */
       {
-        source: "/:path((?!_next/static|_next/image|api).*)",
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+        ],
+      },
+      /**
+       * Manifest e ícones: cache curto no CDN.
+       *
+       * O manifest é versionado pelo build (ícone novo = URL nova), então
+       * um `max-age` baixo é seguro e evita servir um manifest velho logo
+       * depois de um deploy. Não usamos `immutable` porque o caminho não
+       * tem hash.
+       */
+      {
+        source: "/icons/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=86400" },
+        ],
+      },
+      {
+        source: "/:path((?!_next/static|_next/image|api|sw.js|icons).*)",
         headers: [
           {
             key: "Cache-Control",

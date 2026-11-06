@@ -3113,5 +3113,10 @@
       "metaApiStatus": "Erro da API da Meta: {status}",
       "syncFailed": "Falha ao sincronizar os modelos"
     }
+  },
+  "Pwa": {
+    "description": "CRM de WhatsApp com caixa de entrada compartilhada, contatos, pipelines e disparos.",
+    "shortcutInbox": "Caixa de entrada",
+    "shortcutDashboard": "Painel"
   }
 }

@@ -9,6 +9,7 @@ import { Header } from "@/components/layout/header";
 import { AccountAccessAlert } from "@/components/layout/account-access-alert";
 import { PresenceHeartbeat } from "@/components/presence/presence-heartbeat";
 import { BrowserNotificationsListener } from "@/components/notifications/browser-notifications-listener";
+import { ServiceWorkerRegistrar } from "@/components/pwa/service-worker-registrar";
 import { UnreadCountProvider } from "@/adapto/inbox/unread-count-context";
 import { NewMessageAlert } from "@/adapto/notifications/new-message-alert";
 
@@ -34,7 +35,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
+      <div className="flex h-app items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <p className="text-sm text-muted-foreground">{t("loading")}</p>
@@ -50,22 +51,34 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
     // Sidebar (badge) leem o MESMO valor de UMA subscription. Chamar o
     // hook nos dois lados era o que duplicava o canal realtime.
     <UnreadCountProvider>
-      <div className="flex h-screen overflow-hidden bg-background">
+      <div className="flex h-app overflow-hidden bg-background">
         {/* Reports this tab's online/away presence once we know a user is
             signed in. Headless — renders nothing. */}
         <PresenceHeartbeat />
         {/* Desktop alerts for new customer messages (opt-in via Settings →
             Your profile). Headless — renders nothing. */}
         <BrowserNotificationsListener />
+        {/* Registra o service worker (headless). Sem ele, o aviso de
+            mensagem nova não aparece no Android: lá o Chrome exige
+            `ServiceWorkerRegistration.showNotification()` e proíbe
+            `new Notification()` na página. */}
+        <ServiceWorkerRegistrar />
         {/* Toast de mensagem nova em QUALQUER página do dashboard. Antes
             isto morava em inbox/page.tsx e só existia para quem já estava
             na inbox. */}
         <NewMessageAlert />
         <Sidebar open={sidebarOpen} onClose={closeSidebar} />
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <Header onOpenSidebar={() => setSidebarOpen(true)} />
           {/* Thinner horizontal padding on mobile so cards have room to breathe. */}
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <main
+            className="flex-1 overflow-y-auto p-4 sm:p-6"
+            // Soma o recorte inferior (barra de gestos / indicador de home)
+            // ao padding normal, para o último card não ficar atrás dele.
+            style={{
+              paddingBottom: "calc(1rem + env(safe-area-inset-bottom, 0px))",
+            }}
+          >
             {/* Above every page: writes are being rejected and here's why.
                 Renders nothing unless the account/role failed to resolve. */}
             <AccountAccessAlert />

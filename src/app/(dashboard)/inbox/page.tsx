@@ -648,7 +648,27 @@ function InboxPageInner() {
   const hasActiveConv = !!activeConversation;
 
   return (
-    <div className="-m-4 flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden sm:-m-6">
+    <div
+      className="-m-4 flex flex-col overflow-hidden sm:-m-6"
+      // Altura explícita porque o pai (`main`) é `overflow-y-auto` e não dá
+      // altura definida — o inbox precisa preencher a tela sozinho para o
+      // composer ficar colado na base.
+      //
+      // `100dvh` em vez de `100vh`: no Chrome Android `100vh` ignora a
+      // barra de endereço visível, então o inbox ficava mais alto que a
+      // tela e o campo de digitação saía pela parte de baixo.
+      //
+      // O `env(safe-area-inset-*)` é subtraído porque o Header já consome
+      // o recorte de cima, e o margin negativo do rodapé cancela o padding
+      // que o shell soma embaixo — assim o composer encosta na borda real
+      // sem ficar atrás do indicador de home.
+      style={{
+        height:
+          "calc(100dvh - 3.5rem - env(safe-area-inset-top, 0px))",
+        marginBottom:
+          "calc(-1rem - env(safe-area-inset-bottom, 0px))",
+      }}
+    >
       {/* WhatsApp connection banner — in the flex column, not absolute,
           so it pushes the panels down instead of overlapping them. */}
       {whatsappConnected === false && (

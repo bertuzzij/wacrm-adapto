@@ -194,6 +194,14 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             : "lg:static lg:z-0 lg:w-60 lg:translate-x-0 lg:transition-none",
         )}
         aria-label={t("primaryNav")}
+        // No mobile o drawer é `fixed inset-y-0`, ou seja, encosta nas
+        // bordas físicas da tela. O último item da lista e o rodapé de
+        // conta ficavam sob o indicador de home do iPhone / barra de
+        // gestos do Android. `env()` vale 0 no desktop.
+        style={{
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          paddingLeft: "env(safe-area-inset-left, 0px)",
+        }}
       >
         {/* Logo row. On mobile we put a close button here; on desktop it is
             the collapse toggle instead. */}

@@ -3113,5 +3113,10 @@
       "metaApiStatus": "Meta API 오류: {status}",
       "syncFailed": "템플릿을 동기화하지 못했습니다"
     }
+  },
+  "Pwa": {
+    "description": "공유 받은편지함, 연락처, 파이프라인, 방송을 갖춘 WhatsApp CRM입니다.",
+    "shortcutInbox": "받은편지함",
+    "shortcutDashboard": "대시보드"
   }
 }

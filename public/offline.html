@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#020617" />
+    <title>Sem conexão — AdaptoConect</title>
+    <!--
+      Tela de fallback do service worker (public/sw.js).
+
+      Por que um HTML estático e não uma rota do Next: esta página precisa
+      abrir quando o servidor está INALCANÇÁVEL. Uma rota do Next seria
+      renderizada pelo servidor que acabou de falhar — inútil.
+
+      Sem dependências, sem fontes externas, sem CSS do app: o build do
+      Tailwind não está garantido para esta URL e um <link> para um chunk
+      que muda de hash a cada deploy quebraria justamente offline.
+    -->
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        padding-top: calc(24px + env(safe-area-inset-top));
+        padding-bottom: calc(24px + env(safe-area-inset-bottom));
+        background: #020617;
+        color: #f8fafc;
+        font-family:
+          ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        text-align: center;
+      }
+      .box {
+        max-width: 28rem;
+      }
+      .mark {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        background: #7c3aed;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+      }
+      h1 {
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin: 0 0 8px;
+      }
+      p {
+        font-size: 0.875rem;
+        line-height: 1.6;
+        color: #94a3b8;
+        margin: 0 0 20px;
+      }
+      button {
+        font: inherit;
+        font-size: 0.875rem;
+        font-weight: 500;
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: 0;
+        background: #7c3aed;
+        color: #fff;
+        cursor: pointer;
+      }
+      button:active {
+        opacity: 0.85;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="box">
+      <div class="mark" aria-hidden="true">
+        <svg
+          width="28"
+          height="28"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#fff"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+      </div>
+      <h1>Sem conexão</h1>
+      <p>
+        Não foi possível falar com o servidor. Verifique sua internet — assim
+        que a conexão voltar, suas conversas carregam normalmente.
+      </p>
+      <button type="button" onclick="location.reload()">Tentar de novo</button>
+    </div>
+  </body>
+</html>

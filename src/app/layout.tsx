@@ -8,6 +8,10 @@ import { ThemeProvider } from "@/hooks/use-theme";
 import { ThemedToaster } from "@/components/themed-toaster";
 import { APP_NAME, APP_TITLE_TEMPLATE } from "@/adapto/brand";
 import {
+  PWA_APPLE_TOUCH_ICON,
+  PWA_THEME_COLOR,
+} from "@/adapto/pwa/constants";
+import {
   DEFAULT_MODE,
   DEFAULT_THEME,
   MODE_STORAGE_KEY,
@@ -40,6 +44,21 @@ const metadata: Metadata = {
   },
   icons: {
     icon: [{ url: "/icon" }],
+    // Ícone do iOS. Precisa ser arquivo PNG opaco: o iOS ignora o SVG do
+    // `/icon` e, se a imagem tiver transparência, pinta os cantos de preto.
+    // O Next injeta `<link rel="apple-touch-icon">` a partir daqui.
+    apple: [{ url: PWA_APPLE_TOUCH_ICON, sizes: "180x180", type: "image/png" }],
+  },
+  // Metas do PWA no iOS. O Safari NÃO lê `display`/`name` do manifest para
+  // decidir se abre em tela cheia — quem decide é `appleWebApp.capable`.
+  // Sem isso, o ícone adicionado à tela de início abre com a barra de
+  // endereço do Safari e o app deixa de parecer nativo.
+  appleWebApp: {
+    capable: true,
+    title: APP_NAME,
+    // "black-translucent" deixa o conteúdo passar por baixo da barra de
+    // status (efeito edge-to-edge) — por isso o shell trata safe-area.
+    statusBarStyle: "black-translucent",
   },
   formatDetection: {
     email: false,
@@ -49,8 +68,19 @@ const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#020617",
+  themeColor: PWA_THEME_COLOR,
   colorScheme: "dark light",
+  // `cover` estica o layout até as bordas físicas da tela; sem ele os
+  // `env(safe-area-inset-*)` que o shell usa valem zero e o conteúdo fica
+  // dentro de uma moldura com faixas. É o pré-requisito do recorte do
+  // iPhone e do Android com gesture bar.
+  viewportFit: "cover",
+  width: "device-width",
+  initialScale: 1,
+  // Teclado do Android/iOS: com "resizes-content" o viewport encolhe e o
+  // composer do inbox sobe junto com o teclado. Com o padrão
+  // ("resizes-visual") o teclado cobre o campo e o usuário digita às cegas.
+  interactiveWidget: "resizes-content",
 };
 
 // Inline boot script — runs before React hydrates so the user's

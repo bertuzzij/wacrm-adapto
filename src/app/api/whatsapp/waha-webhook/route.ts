@@ -24,6 +24,7 @@ import {
   isGroupChatId,
 } from '@/adapto/whatsapp-groups/identity'
 import { fetchGroupName } from '@/adapto/whatsapp-groups/server'
+import { contactIdForFromMe, isLid } from '@/adapto/whatsapp-groups/from-me'
 
 /**
  * WAHA → CRM bridge.
@@ -375,27 +376,50 @@ async function toMetaBody(event: WahaEvent): Promise<Record<string, unknown> | n
   if (event.event === 'message' || event.event === 'message.any') {
     // Mensagem enviada pelo próprio número.
     //
-    // Em conversa individual ela é descartada: o CRM já gravou a sua
-    // própria cópia ao enviar, e aceitar o eco duplicaria a thread.
+    // Elas chegam de dois jeitos, e cada um precisa de um caminho:
     //
-    // Em grupo é o único jeito de ver o que os atendentes mandam direto
-    // pelo celular — que é como o número é usado de verdade. A inserção é
-    // idempotente por (conversation_id, message_id) e `ignoreDuplicates`
-    // (migração 037), então o eco de uma mensagem enviada pelo próprio CRM
-    // cai como replay em vez de virar linha nova.
+    //   grupo      — `from` é o JID do grupo; basta prefixar e usar o nome
+    //                do grupo.
+    //   individual — `from` é o LID do PRÓPRIO número e `to` vem nulo. O
+    //                contato está em `_data.Info.Chat`, e o LID precisa ser
+    //                traduzido para telefone antes de virar conversa.
+    //
+    // Em ambos, a inserção é idempotente por (conversation_id, message_id)
+    // com `ignoreDuplicates` (migração 037): o eco de uma mensagem que o
+    // próprio CRM enviou cai como replay, não como linha nova.
     if (payload.fromMe) {
-      if (!isGroupChatId(payload.from)) return null
-      const groupKey = groupPhoneKey(payload.from!)
-      const message = buildMetaMessage(payload, groupKey)
+      if (isGroupChatId(payload.from)) {
+        const groupKey = groupPhoneKey(payload.from!)
+        const message = buildMetaMessage(payload, groupKey)
+        if (!message) return null
+        const groupName = await fetchGroupName(payload.from!)
+        return wrap({
+          contacts: [
+            { profile: { name: groupDisplayName(groupName) }, wa_id: groupKey },
+          ],
+          // Marca a origem para o handler gravar `sender_type = 'agent'`
+          // em vez de 'customer'. Campo fora do padrão Meta de propósito:
+          // o handler o lê e não repassa a mais ninguém.
+          messages: [{ ...message, crm_sender: 'agent' }],
+        })
+      }
+
+      // Individual: descobre com quem é a conversa.
+      const peer = contactIdForFromMe(payload)
+      if (!peer) return null
+
+      // O peer pode ser LID ou telefone. `wahaResolveLid` já devolve o
+      // telefone em dígitos (ou null quando o WAHA não sabe).
+      const phone = isLid(peer)
+        ? await wahaResolveLid(peer)
+        : chatIdToPhone(peer)
+      if (!phone) return null
+
+      const message = buildMetaMessage(payload, phone)
       if (!message) return null
-      const groupName = await fetchGroupName(payload.from!)
+
       return wrap({
-        contacts: [
-          { profile: { name: groupDisplayName(groupName) }, wa_id: groupKey },
-        ],
-        // Marca a origem para o handler gravar `sender_type = 'agent'`
-        // em vez de 'customer'. Campo fora do padrão Meta de propósito:
-        // o handler o lê e não repassa a mais ninguém.
+        contacts: [{ profile: {}, wa_id: phone }],
         messages: [{ ...message, crm_sender: 'agent' }],
       })
     }

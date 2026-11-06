@@ -3113,5 +3113,10 @@
       "metaApiStatus": "Meta API error: {status}",
       "syncFailed": "Failed to sync templates"
     }
+  },
+  "Pwa": {
+    "description": "WhatsApp CRM with a shared inbox, contacts, pipelines and broadcasts.",
+    "shortcutInbox": "Inbox",
+    "shortcutDashboard": "Dashboard"
   }
 }

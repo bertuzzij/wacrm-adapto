@@ -639,7 +639,16 @@ export function MessageComposer({
   // ---- Render --------------------------------------------------------
 
   return (
-    <div className="border-t border-border bg-card p-3">
+    <div
+      className="border-t border-border bg-card p-3"
+      // No PWA instalado o rodapé encosta na borda física da tela, e a
+      // barra de gestos do Android / o indicador de home do iPhone ficam
+      // POR CIMA. Sem este inset o usuário toca no ícone de enviar e o
+      // gesto do sistema rouba o toque.
+      style={{
+        paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))",
+      }}
+    >
       {replyTo && (
         <div className="mb-2">
           <ReplyQuote

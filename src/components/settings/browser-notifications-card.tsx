@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { useBrowserNotifyPref } from '@/hooks/use-browser-notifications';
+import { showDeviceNotification } from '@/adapto/pwa/notify';
 import {
   BROWSER_NOTIFY_CHANGE_EVENT,
   getNotificationPermission,
@@ -85,15 +86,16 @@ export function BrowserNotificationsCard({ className }: { className?: string }) 
   };
 
   const sendTest = () => {
-    try {
-      new Notification(t('testTitle'), {
-        body: t('testBody'),
-        icon: '/icon',
-        tag: 'wacrm-test-notification',
-      });
-    } catch {
-      toast.error(t('unsupported'));
-    }
+    // Passa pelo service worker quando existe. `new Notification` na
+    // página lança no Android Chrome, então o teste falhava justamente no
+    // celular — dando a impressão de que a permissão não funcionava.
+    void showDeviceNotification(t('testTitle'), {
+      body: t('testBody'),
+      tag: 'wacrm-test-notification',
+      url: '/settings?tab=profile',
+    }).then((shown) => {
+      if (!shown) toast.error(t('unsupported'));
+    });
   };
 
   const statusKey =

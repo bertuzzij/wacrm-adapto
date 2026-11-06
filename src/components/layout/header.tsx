@@ -58,7 +58,18 @@ export function Header({ onOpenSidebar }: HeaderProps) {
     "U";
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-4 lg:px-6">
+    <header
+      className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-4 lg:px-6"
+      // No PWA instalado o conteúdo passa por baixo do notch/Dynamic Island
+      // (`viewport-fit=cover`). Sem o inset, o título e o botão de menu
+      // ficam atrás do relógio do sistema.
+      style={{
+        paddingTop: "env(safe-area-inset-top, 0px)",
+        height: "calc(3.5rem + env(safe-area-inset-top, 0px))",
+        paddingLeft: "calc(1rem + env(safe-area-inset-left, 0px))",
+        paddingRight: "calc(1rem + env(safe-area-inset-right, 0px))",
+      }}
+    >
       <div className="flex min-w-0 items-center gap-2">
         {/* Hamburger — mobile only. 44×44 hit target per Apple HIG. */}
         <button

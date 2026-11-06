@@ -3113,5 +3113,10 @@
       "metaApiStatus": "Error de la API de Meta: {status}",
       "syncFailed": "Error al sincronizar las plantillas"
     }
+  },
+  "Pwa": {
+    "description": "CRM de WhatsApp con bandeja de entrada compartida, contactos, embudos y envíos.",
+    "shortcutInbox": "Bandeja de entrada",
+    "shortcutDashboard": "Panel"
   }
 }
