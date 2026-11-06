@@ -36,10 +36,17 @@
  * é o motivo principal de o arquivo existir.
  */
 
-// Suba este número a cada mudança de comportamento do SW. O navegador só
-// troca o worker quando o texto do arquivo muda; o `activate` abaixo apaga
-// os caches antigos por prefixo.
-const CACHE_VERSION = "v1";
+// Suba este número a cada mudança de comportamento do SW — ou a cada
+// deploy em que um PWA já instalado precise largar o bundle antigo. O
+// navegador só troca o worker quando o texto do arquivo muda; o `activate`
+// abaixo apaga os caches antigos por prefixo.
+//
+// v2: subiu junto com a instalação guiada (card em Configurações e botão no
+// header). Um app JÁ instalado guarda em cache-first os chunks
+// `/_next/static/*` da versão anterior, e sem este incremento continuaria
+// rodando o bundle velho — sem o botão de instalar e sem as correções de
+// teclado no iOS — até o cache expirar por conta própria.
+const CACHE_VERSION = "v2";
 const STATIC_CACHE = `adaptoconect-static-${CACHE_VERSION}`;
 
 /** Página mostrada quando a navegação falha e não há nada em cache. */
