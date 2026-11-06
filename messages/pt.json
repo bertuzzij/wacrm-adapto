@@ -414,7 +414,8 @@
       "networkError": "erro de rede",
       "documentFallback": "Documento",
       "you": "Você",
-      "groupSendWarning": "Mensagem enviada para o grupo: todos os participantes vão receber."
+      "groupSendWarning": "Mensagem enviada para o grupo: todos os participantes vão receber.",
+      "retryConfirm": "Reenviar esta mensagem? Se ela chegou ao cliente, ele receberá de novo."
     },
     "sessionTimer": {
       "expired": "Expirada",
@@ -486,7 +487,8 @@
       "downloadFailed": "Não foi possível baixar o anexo",
       "viewImage": "Ver imagem",
       "expandVideo": "Expandir vídeo",
-      "imageAlt": "Imagem compartilhada"
+      "imageAlt": "Imagem compartilhada",
+      "retry": "Reenviar"
     },
     "mediaViewer": {
       "counter": "{index} de {total}",

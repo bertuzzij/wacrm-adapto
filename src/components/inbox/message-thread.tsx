@@ -63,6 +63,7 @@ import {
 import { contactHandle } from "@/lib/whatsapp/wa-identity";
 import { resolveAssignmentResult } from "@/lib/inbox/assignment";
 import { resolveMessagingWindow } from "@/adapto/messaging-window/config";
+import { failedDraftFrom, retryNeedsConfirm } from "@/adapto/inbox/retry";
 import { useMessagingWindowEnabled } from "@/adapto/messaging-window/use-messaging-window";
 import {
   businessReactionOn,
@@ -620,6 +621,16 @@ export function MessageThread({
     el.scrollTop = el.scrollHeight;
   }, [messages]);
 
+  // Reenvio de mensagem que falhou.
+  //
+  // Recoloca o texto da bolha que falhou e dispara o envio de novo. A
+  // bolha otimista antiga é atualizada para 'failed' e fica no histórico
+  // visual até o envio novo dar certo — assim o atendente não perde o que
+  // escreveu, mesmo que o primeiro reenvio também falhe.
+  //
+  // Confirmação depois de um minuto: uma mensagem que falhou há muito tempo
+  // pode ter chegado e apenas não ter tido o status atualizado; mandar de
+  // novo duplicaria do lado do cliente, sem desfazer.
   const handleSend = useCallback(
     async (text: string, replyToId?: string) => {
       if (!conversation) return;
@@ -679,6 +690,29 @@ export function MessageThread({
       }
     },
     [conversation, onNewMessage, onUpdateMessage, t]
+  );
+
+  // Reenvio de mensagem que falhou.
+  //
+  // Sem isto, a bolha com erro vive só no estado do React: recarregar a
+  // página apaga o texto e o atendente perde o que escreveu, sem como tentar
+  // de novo.
+  //
+  // Depois de um minuto pede confirmação: a mensagem pode ter chegado e
+  // apenas não ter tido o status atualizado — reenviar duplicaria do lado do
+  // cliente, e não há como apagar.
+  const handleRetry = useCallback(
+    (message: Message) => {
+      const draft = failedDraftFrom(message);
+      if (!draft) return;
+
+      if (retryNeedsConfirm(message) && !window.confirm(t("retryConfirm"))) {
+        return;
+      }
+
+      void handleSend(draft.text, draft.replyToId);
+    },
+    [handleSend, t]
   );
 
   const handleSendMedia = useCallback(
@@ -1326,6 +1360,7 @@ export function MessageThread({
                           reactions={msgReactions}
                           onToggleReaction={handlePillToggle}
                           onOpenMedia={handleMediaChange}
+                          onRetry={handleRetry}
                         />
                       </MessageActions>
                     );

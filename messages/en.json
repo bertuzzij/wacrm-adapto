@@ -414,7 +414,8 @@
       "networkError": "network error",
       "documentFallback": "Document",
       "you": "You",
-      "groupSendWarning": "Sending to the group: every participant will receive it."
+      "groupSendWarning": "Sending to the group: every participant will receive it.",
+      "retryConfirm": "Resend this message? If it already reached the customer, they will get it twice."
     },
     "sessionTimer": {
       "expired": "Expired",
@@ -486,7 +487,8 @@
       "downloadFailed": "Couldn't download the attachment",
       "viewImage": "View image",
       "expandVideo": "Expand video",
-      "imageAlt": "Shared image"
+      "imageAlt": "Shared image",
+      "retry": "Resend"
     },
     "mediaViewer": {
       "counter": "{index} of {total}",

@@ -319,8 +319,18 @@ export async function sendMessageToConversation(  db: SupabaseClient,
   // enviar — se ele apagar um `@`, a lista da tela ficaria mencionando
   // alguém que não está mais no texto. Aqui o texto é a fonte da verdade e
   // a lista de membros é só o filtro de quem é válido.
+  //
+  // O `@` no texto é o gatilho, e isso é o que impede o envio de ficar
+  // lento: buscar os membros custa uma chamada por participante (nome e
+  // foto), e a esmagadora maioria das mensagens não menciona ninguém. Sem
+  // esta checagem, TODA mensagem de grupo pagava esse custo antes de sair.
   let mentions: string[] | undefined
-  if (conversation.kind === 'group' && messageType === 'text' && contentText) {
+  if (
+    conversation.kind === 'group' &&
+    messageType === 'text' &&
+    contentText &&
+    contentText.includes('@')
+  ) {
     const groupJid = groupChatIdFromPhoneKey(contact?.phone)
     if (groupJid) {
       const groupMembers = await fetchGroupMembers(groupJid)
@@ -333,16 +343,21 @@ export async function sendMessageToConversation(  db: SupabaseClient,
     mentions = mentionedPhones.map(mentionJid)
   }
 
-  // em grupo sempre (não há autor no protocolo), em conversa individual só
+  // Em grupo sempre (não há autor no protocolo), em conversa individual só
   // se a conta pediu.
   //
-  // Uma leitura por envio é aceitável (um SELECT por PK), e o fallback é
-  // silencioso: se a query falhar, a mensagem sai sem assinatura em vez de
+  // As duas leituras vão em paralelo: eram sequenciais, e cada uma é uma ida
+  // ao banco no caminho crítico do envio. Em série elas somavam latência
+  // antes de qualquer chamada ao WhatsApp.
+  //
+  // Fallback silencioso: se falhar, a mensagem sai sem assinatura em vez de
   // não sair.
-  const signIndividual = await loadSignIndividual(db, accountId);
+  const [signIndividual, senderNameCandidate] = await Promise.all([
+    loadSignIndividual(db, accountId),
+    senderId ? loadSenderName(db, senderId) : Promise.resolve(null),
+  ])
   const shouldSign = conversation.kind === 'group' || signIndividual;
-  const senderName =
-    shouldSign && senderId ? await loadSenderName(db, senderId) : null;
+  const senderName = shouldSign ? senderNameCandidate : null;
 
   // A contact is addressable by phone number OR by business-scoped user
   // ID. Meta withholds the phone number for a customer who has adopted

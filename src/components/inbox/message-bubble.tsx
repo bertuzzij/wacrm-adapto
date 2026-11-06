@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { canRetry } from "@/adapto/inbox/retry";
 import type {
   Message,
   MessageReaction,
@@ -62,6 +63,8 @@ interface MessageBubbleProps {
    * pelo celular de um colega parece ter saído do nada.
    */
   authorName?: string | null;
+  /** Reenvia uma mensagem que falhou. Ausente = sem botão. */
+  onRetry?: (message: Message) => void;
 }
 
 /**
@@ -389,6 +392,7 @@ export function MessageBubble({
   onToggleReaction,
   onOpenMedia,
   authorName,
+  onRetry,
 }: MessageBubbleProps) {
   const t = useTranslations("Inbox.bubble");
 
@@ -475,12 +479,26 @@ export function MessageBubble({
         </div>
       </div>
       {failure && (
-        <p
-          className="mt-0.5 px-1 text-[10px] leading-tight text-muted-foreground"
-          title={failure}
-        >
-          {t("notDelivered")}: {failure}
-        </p>
+        <div className="mt-0.5 flex items-center gap-2 px-1">
+          <p
+            className="text-[10px] leading-tight text-muted-foreground"
+            title={failure}
+          >
+            {t("notDelivered")}: {failure}
+          </p>
+          {/* Reenviar. Sem isto, a mensagem que falhou vive só no estado do
+              React: recarregar a página apaga o texto e o atendente perde o
+              que escreveu, sem como tentar de novo. */}
+          {onRetry && canRetry(message) && (
+            <button
+              type="button"
+              onClick={() => onRetry(message)}
+              className="shrink-0 rounded px-1 text-[10px] font-semibold text-primary underline-offset-2 hover:underline"
+            >
+              {t("retry")}
+            </button>
+          )}
+        </div>
       )}
       {reactions && reactions.length > 0 && onToggleReaction && (
         <MessageReactions
