@@ -41,6 +41,7 @@ import {
 import { useCan } from "@/hooks/use-can";
 import { EmojiButton } from "@/adapto/emoji-picker/picker";
 import { insertEmojiAtSelection } from "@/adapto/emoji-picker/insert-emoji";
+import { extractPastedFile } from "@/adapto/inbox/paste";
 import { MentionButton } from "@/adapto/whatsapp-groups/mention-button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -487,6 +488,39 @@ export function MessageComposer({
     [stageUpload],
   );
 
+  // Colar um print direto no campo (Ctrl+V).
+  //
+  // O gesto mais comum no atendimento: o cliente manda um erro, o atendente
+  // recorta e cola. Antes disso só existia o clipe, que abre o seletor de
+  // arquivos — três cliques onde deveria haver nenhum.
+  //
+  // `preventDefault` só quando há arquivo: se o clipboard traz só texto, o
+  // comportamento padrão do textarea deve seguir (colar o texto). Chamar
+  // prevent sempre impediria colar texto no campo.
+  const handlePaste = useCallback(
+    (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      if (readOnly || busy) return;
+
+      const data = event.clipboardData;
+      if (!data) return;
+
+      const extracted = extractPastedFile(
+        Array.from(data.items ?? []).map((item) => ({
+          kind: item.kind,
+          type: item.type,
+        })),
+        Array.from(data.files ?? []),
+        (index) => data.items[index]?.getAsFile() ?? null,
+      );
+
+      if (!extracted) return; // deixa o paste de texto seguir normalmente
+
+      event.preventDefault();
+      void stageUpload(extracted.kind, extracted.file);
+    },
+    [readOnly, busy, stageUpload],
+  );
+
   // ---- Voice recording (client-side Ogg/Opus, no server transcode) ---
 
   // The encoded Ogg/Opus file from opus-recorder → upload as an audio
@@ -818,6 +852,7 @@ export function MessageComposer({
             ref={textareaRef}
             value={text}
             onChange={handleChange}
+            onPaste={handlePaste}
             onKeyDown={handleKeyDown}
             placeholder={
               readOnly
