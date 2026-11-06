@@ -9,6 +9,7 @@ import {
   normalizeConversations,
 } from "@/lib/inbox/conversations";
 import { applyInboxFilter, type InboxFilter } from "@/lib/inbox/inbox-filters";
+import { sortConversations, isPinned } from "@/adapto/inbox/sort";
 import { expiringFilterApplies } from "@/adapto/messaging-window/config";
 import { useMessagingWindowEnabled } from "@/adapto/messaging-window/use-messaging-window";
 import { cn } from "@/lib/utils";
@@ -18,7 +19,8 @@ import {
   statusLabelKey,
 } from "@/adapto/inbox/conversation-status";
 import type { Conversation, Tag } from "@/types";
-import { Search, ChevronDown, X } from "lucide-react";
+import { Search, ChevronDown, X, Pin } from "lucide-react";
+import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
@@ -77,8 +79,6 @@ export function ConversationList({
     ...(showExpiringFilter
       ? [{ label: t("filterExpiring"), value: "expiring" as InboxFilter }]
       : []),
-    { label: t("filterGroups"), value: "groups" },
-    { label: t("filterDirect"), value: "direct" },
     { label: t("filterOpen"), value: "open" },
     { label: t("filterPending"), value: "pending" },
     { label: t("filterClosed"), value: "closed" },
@@ -86,7 +86,13 @@ export function ConversationList({
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<InboxFilter>(initialFilter);
+  // Eixo separado do status: individual, grupo ou todos. Antes isto era uma
+  // opção dentro do seletor de status, o que impedia combinar "não lidas"
+  // com "grupos".
+  const [kindFilter, setKindFilter] = useState<"all" | "direct" | "groups">("all");
   const [now, setNow] = useState(() => Date.now());
+  // Overrides de fixação feitos nesta sessão (ver handleTogglePin).
+  const [pins, setPins] = useState<Map<string, string | null>>(new Map());
 
   // Se a janela foi desligada com o filtro "Janela fechando" selecionado,
   // a lista ficaria presa num filtro que não existe mais no seletor.
@@ -194,6 +200,17 @@ export function ConversationList({
   const filtered = useMemo(() => {
     let result = applyInboxFilter(conversations, filter, now);
 
+    // Tipo de conversa, num eixo próprio.
+    if (kindFilter !== "all") {
+      result = result.filter((c) =>
+        kindFilter === "groups"
+          ? c.kind === "group"
+          // `kind` ausente = conversa anterior à migração 063, que só tinha
+          // individual. Tratar como 'direct' evita esconder histórico.
+          : (c.kind ?? "direct") === "direct"
+      );
+    }
+
     // Contact-based filters (tags via OR logic, exact company match).
     if (selectedTagIds.length > 0 || selectedCompany !== null) {
       result = result.filter((c) =>
@@ -214,8 +231,14 @@ export function ConversationList({
       });
     }
 
-    return result;
-  }, [conversations, filter, now, search, selectedTagIds, selectedCompany]);
+    // Aplica os pins desta sessão antes de ordenar, para o alfinete
+    // recém-clicado já subir a conversa na mesma renderização.
+    const withPins = result.map((c) =>
+      pins.has(c.id) ? { ...c, pinned_at: pins.get(c.id) ?? null } : c
+    );
+
+    return sortConversations(withPins);
+  }, [conversations, filter, now, search, selectedTagIds, selectedCompany, kindFilter, pins]);
 
   const toggleTag = useCallback((id: string) => {
     setSelectedTagIds((prev) =>
@@ -242,6 +265,41 @@ export function ConversationList({
       onSelect(conv);
     },
     [onSelect]
+  );
+
+  // Fixa/desafixa com atualização otimista.
+  //
+  // `pins` é um mapa à parte em vez de mutar a prop `conversations`: a lista
+  // é do componente pai (que também a usa para outras telas), e escrever
+  // nela aqui criaria duas fontes de verdade. O mapa guarda só o que mudou
+  // nesta sessão; `sortConversations` recebe a visão combinada.
+  const handleTogglePin = useCallback(
+    async (conv: Conversation, pinned: boolean) => {
+      const previous = pins.get(conv.id) ?? conv.pinned_at ?? null;
+      const next = pinned ? new Date().toISOString() : null;
+
+      setPins((prev) => {
+        const copy = new Map(prev);
+        copy.set(conv.id, next);
+        return copy;
+      });
+
+      try {
+        const res = await fetch(`/api/adapto/conversations/${conv.id}/pin`, {
+          method: pinned ? "POST" : "DELETE",
+        });
+        if (!res.ok) throw new Error(String(res.status));
+      } catch (err) {
+        console.error("[conversation-list] pin failed:", err);
+        setPins((prev) => {
+          const copy = new Map(prev);
+          copy.set(conv.id, previous);
+          return copy;
+        });
+        toast.error(t("pinFailed"));
+      }
+    },
+    [pins, t]
   );
 
   const activeFilter = FILTER_OPTIONS.find((o) => o.value === filter);
@@ -280,6 +338,48 @@ export function ConversationList({
                   className={cn(
                     "text-sm",
                     filter === opt.value
+                      ? "text-primary"
+                      : "text-popover-foreground"
+                  )}
+                >
+                  {opt.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Seletor de tipo de conversa — mesmo padrão de tags e empresa:
+              um filtro próprio na barra, não uma opção dentro do seletor de
+              status. Status e tipo são eixos diferentes, e misturá-los num
+              dropdown só obrigava a escolher entre "não lidas" e "grupos". */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className={cn(
+                "inline-flex items-center justify-center h-7 gap-1 px-2 text-xs rounded-md hover:bg-muted",
+                kindFilter !== "all"
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {kindFilter === "groups"
+                ? t("kindGroups")
+                : kindFilter === "direct"
+                  ? t("kindDirect")
+                  : t("kindAll")}
+              <ChevronDown className="h-3 w-3" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="border-border bg-popover">
+              {([
+                { value: "all", label: t("kindAll") },
+                { value: "direct", label: t("kindDirect") },
+                { value: "groups", label: t("kindGroups") },
+              ] as const).map((opt) => (
+                <DropdownMenuItem
+                  key={opt.value}
+                  onClick={() => setKindFilter(opt.value)}
+                  className={cn(
+                    "text-sm",
+                    kindFilter === opt.value
                       ? "text-primary"
                       : "text-popover-foreground"
                   )}
@@ -440,6 +540,7 @@ export function ConversationList({
                 conversation={conv}
                 isActive={conv.id === activeConversationId}
                 onSelect={handleSelect}
+                onTogglePin={handleTogglePin}
                 t={t}
               />
             ))}
@@ -454,6 +555,7 @@ interface ConversationItemProps {
   conversation: Conversation;
   isActive: boolean;
   onSelect: (conversation: Conversation) => void;
+  onTogglePin: (conversation: Conversation, pinned: boolean) => void;
   t: ReturnType<typeof useTranslations>;
 }
 
@@ -461,15 +563,27 @@ function ConversationItem({
   conversation,
   isActive,
   onSelect,
+  onTogglePin,
   t,
 }: ConversationItemProps) {
   const contact = conversation.contact;
   const displayName = contact?.name || contact?.phone || t("unknown");
   const initials = displayName.charAt(0).toUpperCase();
+  const pinned = isPinned(conversation);
 
   const handleClick = useCallback(() => {
     onSelect(conversation);
   }, [onSelect, conversation]);
+
+  const handlePinClick = useCallback(
+    (event: React.MouseEvent) => {
+      // O item inteiro é um botão que abre a conversa; sem isto o clique no
+      // alfinete também navegaria.
+      event.stopPropagation();
+      onTogglePin(conversation, !pinned);
+    },
+    [onTogglePin, conversation, pinned]
+  );
 
   const timeAgo = conversation.last_message_at
     ? formatDistanceToNow(new Date(conversation.last_message_at), {
@@ -481,21 +595,47 @@ function ConversationItem({
     <button
       onClick={handleClick}
       className={cn(
-        "flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/50",
+        "group flex w-full items-start gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/50",
         isActive && "border-l-2 border-primary bg-muted/70"
       )}
     >
-      {/* Avatar */}
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
-        {contact?.avatar_url ? (
-          <img
-            src={contact.avatar_url}
-            alt={displayName}
-            className="h-10 w-10 rounded-full object-cover"
-          />
-        ) : (
-          initials
-        )}
+      {/* Avatar. O alfinete aparece sobreposto quando fixada; o botão de
+          fixar/desafixar é um alvo próprio para não roubar o clique de
+          abrir a conversa. */}
+      <div className="relative shrink-0">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-sm font-medium text-foreground">
+          {contact?.avatar_url ? (
+            <img
+              src={contact.avatar_url}
+              alt={displayName}
+              className="h-10 w-10 rounded-full object-cover"
+            />
+          ) : (
+            initials
+          )}
+        </div>
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={handlePinClick}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handlePinClick(e as unknown as React.MouseEvent);
+            }
+          }}
+          title={pinned ? t("unpin") : t("pin")}
+          aria-label={pinned ? t("unpin") : t("pin")}
+          aria-pressed={pinned}
+          className={cn(
+            "absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border border-border transition-opacity",
+            pinned
+              ? "bg-primary text-primary-foreground opacity-100"
+              : "bg-card text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100"
+          )}
+        >
+          <Pin className="h-2.5 w-2.5" fill={pinned ? "currentColor" : "none"} />
+        </span>
       </div>
 
       {/* Content */}

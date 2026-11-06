@@ -191,6 +191,13 @@ export interface Conversation {
    * que existia.
    */
   kind?: ConversationKind;
+  /**
+   * Quando a conversa foi fixada no topo da inbox (migração 066).
+   *
+   * `null`/ausente = não fixada. Guarda o instante, não um booleano, para
+   * que várias fixadas tenham ordem definida entre si.
+   */
+  pinned_at?: string | null;
   created_at: string;
   updated_at: string;
   contact?: Contact;

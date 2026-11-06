@@ -369,7 +369,13 @@
         "closed": "Fechada"
       },
       "filterGroups": "Grupos",
-      "filterDirect": "Conversas"
+      "filterDirect": "Conversas",
+      "kindAll": "Todos",
+      "kindDirect": "Conversas",
+      "kindGroups": "Grupos",
+      "pin": "Fixar no topo",
+      "unpin": "Desafixar",
+      "pinFailed": "Não foi possível fixar a conversa"
     },
     "messageThread": {
       "backToConversations": "Voltar às conversas",

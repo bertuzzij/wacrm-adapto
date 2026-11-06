@@ -369,7 +369,13 @@
         "closed": "Closed"
       },
       "filterGroups": "Groups",
-      "filterDirect": "Direct chats"
+      "filterDirect": "Direct chats",
+      "kindAll": "All",
+      "kindDirect": "Direct",
+      "kindGroups": "Groups",
+      "pin": "Pin to top",
+      "unpin": "Unpin",
+      "pinFailed": "Could not pin the conversation"
     },
     "messageThread": {
       "backToConversations": "Back to conversations",

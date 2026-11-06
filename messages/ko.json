@@ -369,7 +369,13 @@
         "closed": "닫힘"
       },
       "filterGroups": "그룹",
-      "filterDirect": "개인 대화"
+      "filterDirect": "개인 대화",
+      "kindAll": "전체",
+      "kindDirect": "개인 대화",
+      "kindGroups": "그룹",
+      "pin": "상단에 고정",
+      "unpin": "고정 해제",
+      "pinFailed": "대화를 고정하지 못했습니다"
     },
     "messageThread": {
       "backToConversations": "대화 목록으로 돌아가기",
