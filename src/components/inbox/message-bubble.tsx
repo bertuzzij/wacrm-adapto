@@ -53,6 +53,15 @@ interface MessageBubbleProps {
    * stays inline and non-clickable.
    */
   onOpenMedia?: (messageId: string) => void;
+  /**
+   * Quem mandou, quando isso não é óbvio pelo lado da conversa.
+   *
+   * Numa conversa individual, "eu ou o cliente" já responde. Num grupo há
+   * vários atendentes usando o mesmo número, então saber QUAL pessoa da
+   * equipe escreveu é informação real — e sem ela uma mensagem enviada
+   * pelo celular de um colega parece ter saído do nada.
+   */
+  authorName?: string | null;
 }
 
 /**
@@ -379,6 +388,7 @@ export function MessageBubble({
   reactions,
   onToggleReaction,
   onOpenMedia,
+  authorName,
 }: MessageBubbleProps) {
   const t = useTranslations("Inbox.bubble");
 
@@ -409,6 +419,19 @@ export function MessageBubble({
             preview={reply.preview}
             onPrimary={isAgent}
           />
+        )}
+        {/* Autor, só quando o pai informa (hoje: conversas de grupo, onde
+            vários atendentes dividem o mesmo número). Some quando não há
+            nome — melhor nada do que "-". */}
+        {authorName && (
+          <p
+            className={cn(
+              "mb-0.5 text-[11px] font-semibold leading-none",
+              isAgent ? "text-primary-foreground/80" : "text-primary",
+            )}
+          >
+            {authorName}
+          </p>
         )}
         <MessageContent
           message={message}

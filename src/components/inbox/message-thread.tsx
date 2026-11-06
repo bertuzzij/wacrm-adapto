@@ -1306,6 +1306,13 @@ export function MessageThread({
                       >
                         <MessageBubble
                           message={msg}
+                          authorName={
+                            conversation.kind === "group" &&
+                            (msg.sender_type === "agent" || msg.sender_type === "bot")
+                              ? (profiles.find((p) => p.user_id === msg.sender_id)?.full_name ??
+                                null)
+                              : null
+                          }
                           template={
                             msg.content_type === "template"
                               ? matchMessageTemplate(msg, sentTemplates)
@@ -1342,25 +1349,24 @@ export function MessageThread({
         }}
       />
 
-      {/* Composer. Em grupo, o envio ainda não é suportado: responder
-          vai para todos os participantes, sem desfazer, e essa decisão
-          não cabe a um campo habilitado por omissão. O aviso explica em
-          vez de deixar o usuário digitar e falhar. */}
-      {conversation.kind === "group" ? (
-        <div className="border-t border-border bg-muted/40 px-4 py-3 text-center text-sm text-muted-foreground">
-          {t("groupReadOnly")}
-        </div>
-      ) : (
-        <MessageComposer
-          conversationId={conversation.id}
-          sessionExpired={sessionInfo.expired}
-          onSend={handleSend}
-          onSendMedia={handleSendMedia}
-          onSendInteractive={handleSendInteractive}
-          onOpenTemplates={handleOpenTemplates}
-          replyTo={replyTo}
-          onClearReply={() => setReplyTo(null)}
-        />
+      {/* Composer. Grupos passaram a aceitar envio: o número é o mesmo, e
+          a mensagem sai como o WhatsApp da empresa — igual ao que já
+          acontece quando alguém responde pelo celular. O aviso abaixo do
+          campo lembra que todo mundo no grupo lê. */}
+      <MessageComposer
+        conversationId={conversation.id}
+        sessionExpired={sessionInfo.expired}
+        onSend={handleSend}
+        onSendMedia={handleSendMedia}
+        onSendInteractive={handleSendInteractive}
+        onOpenTemplates={handleOpenTemplates}
+        replyTo={replyTo}
+        onClearReply={() => setReplyTo(null)}
+      />
+      {conversation.kind === "group" && (
+        <p className="border-t border-border bg-muted/40 px-4 py-2 text-center text-xs text-muted-foreground">
+          {t("groupSendWarning")}
+        </p>
       )}
 
       <TemplatePicker

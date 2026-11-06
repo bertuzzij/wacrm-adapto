@@ -222,6 +222,24 @@ describe('identityDisplayName', () => {
 })
 
 describe('resolveContactSendTarget', () => {
+  it('sends to a group by its JID, not by a phone number', () => {
+    // A chave `group:<jid>` não é E.164 nem BSUID. Sem este ramo o envio
+    // para grupo falhava com "invalid phone" — o grupo ficava somente
+    // leitura sem que existisse um motivo para isso.
+    expect(
+      resolveContactSendTarget({ phone: 'group:5511000000001-1000000001@g.us' })
+    ).toEqual({ target: '5511000000001-1000000001@g.us', isPhone: false })
+  })
+
+  it('keeps a group target out of the phone-variant retry', () => {
+    // `isPhone: false` é o que impede o retry de variações de trunk: um
+    // JID de grupo tem exatamente uma forma correta.
+    const resolved = resolveContactSendTarget({
+      phone: 'group:5511000000001-1000000001@g.us',
+    })
+    expect(resolved?.isPhone).toBe(false)
+  })
+
   it('prefers a usable phone number', () => {
     expect(
       resolveContactSendTarget({

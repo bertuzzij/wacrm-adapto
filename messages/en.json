@@ -406,7 +406,7 @@
       "networkError": "network error",
       "documentFallback": "Document",
       "you": "You",
-      "groupReadOnly": "This is a group conversation. Reading is available; sending messages to groups is not supported yet."
+      "groupSendWarning": "Sending to the group: every participant will receive it."
     },
     "sessionTimer": {
       "expired": "Expired",

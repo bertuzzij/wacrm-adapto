@@ -406,7 +406,7 @@
       "networkError": "erro de rede",
       "documentFallback": "Documento",
       "you": "Você",
-      "groupReadOnly": "Esta é uma conversa de grupo. A leitura está disponível; o envio de mensagens em grupos ainda não."
+      "groupSendWarning": "Mensagem enviada para o grupo: todos os participantes vão receber."
     },
     "sessionTimer": {
       "expired": "Expirada",

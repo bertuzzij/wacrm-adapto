@@ -32,7 +32,10 @@ import {
   normalizePhone,
   sanitizePhoneForMeta,
 } from './phone-utils'
-import { isGroupPhoneKey } from '@/adapto/whatsapp-groups/identity'
+import {
+  groupChatIdFromPhoneKey,
+  isGroupPhoneKey,
+} from '@/adapto/whatsapp-groups/identity'
 
 /** The `contacts[]` entry Meta pairs with an inbound message. */
 export interface WaContactPayload {
@@ -216,6 +219,12 @@ export function resolveContactSendTarget(contact: {
   phone?: string | null
   wa_user_id?: string | null
 } | null | undefined): WaSendTarget | null {
+  // Grupo vem primeiro: a chave `group:<jid>` nunca é E.164 nem BSUID, e
+  // cair nos ramos abaixo devolveria null — o que faria o envio para grupo
+  // falhar com "invalid phone" em vez de funcionar.
+  const groupJid = groupChatIdFromPhoneKey(contact?.phone)
+  if (groupJid) return { target: groupJid, isPhone: false }
+
   const sanitized = sanitizePhoneForMeta(contact?.phone ?? '')
   if (isValidE164(sanitized)) return { target: sanitized, isPhone: true }
 

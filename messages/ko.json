@@ -406,7 +406,7 @@
       "networkError": "네트워크 오류",
       "documentFallback": "문서",
       "you": "나",
-      "groupReadOnly": "그룹 대화입니다. 읽기는 가능하지만, 그룹으로 메시지 보내기는 아직 지원되지 않습니다."
+      "groupSendWarning": "그룹으로 전송됩니다. 모든 참여자가 메시지를 받습니다."
     },
     "sessionTimer": {
       "expired": "만료됨",

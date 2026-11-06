@@ -37,8 +37,25 @@ import { fileURLToPath } from 'node:url'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const OUT_FILE = path.join(root, '.waha-webhook-url.txt')
 
-/** Events the CRM knows how to translate (see waha-webhook/route.ts). */
-export const EVENTS = ['message', 'message.ack', 'message.reaction', 'poll.vote']
+/**
+ * Events the CRM knows how to translate (see waha-webhook/route.ts).
+ *
+ * `message.any` é necessário além de `message`: no WAHA, `message` dispara
+ * só para mensagem RECEBIDA, enquanto `message.any` cobre também a que o
+ * próprio número enviou. Sem ele, responder pelo celular dentro de um
+ * grupo nunca chega ao CRM — a conversa mostra só um lado.
+ *
+ * O eco é inofensivo: a inserção é idempotente por
+ * (conversation_id, message_id), então uma mensagem que o próprio CRM
+ * enviou volta como replay, não como linha nova.
+ */
+export const EVENTS = [
+  'message',
+  'message.any',
+  'message.ack',
+  'message.reaction',
+  'poll.vote',
+]
 
 /** Retry policy matching the rest of the fleet's webhook config. */
 const RETRIES = { policy: 'exponential', delaySeconds: 2, attempts: 15 }
