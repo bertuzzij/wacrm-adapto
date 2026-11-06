@@ -1154,6 +1154,34 @@ interface ContactOutcome {
  * migration 040's unique index — no fuzzy matching, because a BSUID is
  * an opaque identifier with exactly one correct spelling.
  */
+/**
+ * Contacto de grupo pela chave `group:<jid>`, com igualdade EXATA.
+ *
+ * Deliberadamente não usa `findExistingContact`: aquele compara por
+ * `phone_normalized` (só dígitos), e a chave de um grupo normaliza para
+ * exatamente os mesmos dígitos que um contato legado cujo `phone` fosse o
+ * JID do grupo já sem prefixo. Essa colisão anexou uma mensagem de grupo a
+ * um contato de pessoa. Aqui a comparação é na string inteira, então grupo
+ * só encontra grupo.
+ */
+async function findContactByGroupKey(
+  accountId: string,
+  groupKey: string
+): Promise<ContactRow | null> {
+  const { data, error } = await supabaseAdmin()
+    .from('contacts')
+    .select('*')
+    .eq('account_id', accountId)
+    .eq('phone', groupKey)
+    .maybeSingle()
+
+  if (error) {
+    console.error('[webhook] group contact lookup failed:', error.message)
+    return null
+  }
+  return data ?? null
+}
+
 async function findContactByWaUserId(
   accountId: string,
   waUserId: string
@@ -1236,12 +1264,20 @@ async function findOrCreateContact(
   // Fall back to the phone. The same helper backs the manual contact form
   // and CSV import, so all three paths agree on what "same number"
   // means (issue #212).
+  //
+  // EXCEÇÃO: grupo. `findExistingContact` compara `phone_normalized`, que é
+  // "só os dígitos". A chave `group:<jid>` e um contato legado cujo telefone
+  // seja os dígitos do JID normalizam para o MESMO valor — foi assim que uma
+  // mensagem de grupo foi anexada a um contato de pessoa criado antes desta
+  // mudança. Grupo só casa com grupo.
   if (!existingContact && identity.phone) {
-    existingContact = await findExistingContact(
-      supabaseAdmin(),
-      accountId,
-      identity.phone,
-    )
+    existingContact = identity.isGroup
+      ? await findContactByGroupKey(accountId, identity.phone)
+      : await findExistingContact(
+          supabaseAdmin(),
+          accountId,
+          identity.phone,
+        )
   }
 
   if (existingContact) {
