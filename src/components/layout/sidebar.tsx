@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useBellCounts } from "@/adapto/inbox/unread-count-context";
+import { useSidebarCollapsed } from "@/adapto/layout/use-sidebar-collapsed";
 import {
   formatUnreadBadge,
   shouldShowUnreadIndicator,
@@ -18,6 +19,8 @@ import {
   LayoutDashboard,
   LogOut,
   MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
   Radio,
   Settings,
   Shield,
@@ -122,6 +125,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const { profile, profileLoading, account, accountRole, signOut } = useAuth();
   const { unreadConversations: totalUnread, unreadNotifications } =
     useBellCounts();
+  const { collapsed, toggle: toggleCollapsed } = useSidebarCollapsed();
   // Only surface the account-name strip when it actually carries
   // information. A solo user's personal account is named after them
   // (the 017 signup trigger seeds it from `full_name`), so showing it
@@ -183,18 +187,35 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           "transition-transform duration-200 ease-out will-change-transform",
           open ? "translate-x-0" : "-translate-x-full",
           // Desktop: static, always visible — reset all the mobile framing.
-          "lg:static lg:z-0 lg:w-60 lg:translate-x-0 lg:transition-none",
+          // Colapsado, vira uma faixa de ícones: libera ~176px para a inbox,
+          // que é onde o painel do contato competia com a conversa.
+          collapsed
+            ? "lg:static lg:z-0 lg:w-16 lg:translate-x-0 lg:transition-none"
+            : "lg:static lg:z-0 lg:w-60 lg:translate-x-0 lg:transition-none",
         )}
         aria-label={t("primaryNav")}
       >
-        {/* Logo row. On mobile we put a close button here; on desktop the
-            close button is hidden since the sidebar is always-visible. */}
-        <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+        {/* Logo row. On mobile we put a close button here; on desktop it is
+            the collapse toggle instead. */}
+        <div
+          className={cn(
+            "flex h-14 shrink-0 items-center gap-2 border-b border-border px-4",
+            collapsed ? "lg:justify-center lg:px-2" : "justify-between"
+          )}
+        >
+          <Link
+            href="/dashboard"
+            className={cn("flex items-center gap-2", collapsed && "lg:hidden")}
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <MessageSquare className="h-4 w-4" />
             </div>
-            <span className="text-sm font-semibold text-foreground">
+            <span
+              className={cn(
+                "text-sm font-semibold text-foreground",
+                collapsed && "lg:hidden"
+              )}
+            >
               {t("title")}
             </span>
           </Link>
@@ -205,6 +226,26 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
           >
             <X className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? t("expandMenu") : t("collapseMenu")}
+            aria-expanded={!collapsed}
+            title={collapsed ? t("expandMenu") : t("collapseMenu")}
+            className={cn(
+              // Colapsado, o logo some e este botão fica sozinho — é o
+              // caminho de volta. Escondê-lo junto com os rótulos deixaria
+              // o menu preso sem como reabrir.
+              "hidden h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:flex",
+              collapsed && "lg:mx-auto"
+            )}
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
           </button>
         </div>
 
@@ -251,8 +292,13 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                         : "text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
                   >
-                    <item.icon className="h-4 w-4" />
-                    <span className="flex-1">{t(item.labelKey as string)}</span>
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span
+                      className={cn("flex-1", collapsed && "lg:hidden")}
+                      title={collapsed ? t(item.labelKey as string) : undefined}
+                    >
+                      {t(item.labelKey as string)}
+                    </span>
                     {item.beta && (
                       <span
                         aria-label={t("beta")}

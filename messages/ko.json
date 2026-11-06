@@ -41,7 +41,9 @@
     "defaultAvatar": "아바타",
     "menuProfile": "프로필",
     "menuSettings": "설정",
-    "menuSignOut": "로그아웃"
+    "menuSignOut": "로그아웃",
+    "collapseMenu": "메뉴 접기",
+    "expandMenu": "메뉴 펼치기"
   },
   "Header": {
     "dashboard": "대시보드",

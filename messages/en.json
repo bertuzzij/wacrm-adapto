@@ -41,7 +41,9 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Profile",
     "menuSettings": "Settings",
-    "menuSignOut": "Sign out"
+    "menuSignOut": "Sign out",
+    "collapseMenu": "Collapse menu",
+    "expandMenu": "Expand menu"
   },
   "Header": {
     "dashboard": "Dashboard",

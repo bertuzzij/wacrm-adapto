@@ -41,7 +41,9 @@
     "defaultAvatar": "Avatar",
     "menuProfile": "Perfil",
     "menuSettings": "Configuración",
-    "menuSignOut": "Cerrar sesión"
+    "menuSignOut": "Cerrar sesión",
+    "collapseMenu": "Contraer menú",
+    "expandMenu": "Expandir menú"
   },
   "Header": {
     "dashboard": "Panel",
