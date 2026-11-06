@@ -19,6 +19,7 @@ import { FieldsAndTagsPanel } from '@/components/settings/fields-and-tags-panel'
 import { DealsSettings } from '@/components/settings/deals-settings';
 import { InboxSettings } from '@/components/settings/inbox-settings';
 import { MessagingWindowPanel } from '@/adapto/messaging-window/panel';
+import { NotificationsPanel } from '@/adapto/notifications/panel';
 import { MembersTab } from '@/components/settings/members-tab';
 import { ApiKeysSettings } from '@/components/settings/api-keys-settings';
 import {
@@ -79,6 +80,7 @@ function SettingsPageInner() {
     appearance: <AppearancePanel />,
     whatsapp: <WhatsAppConfig />,
     waha: <WahaConnectionPanel />,
+    notifications: <NotificationsPanel />,
     templates: <TemplateManager />,
     'quick-replies': <QuickRepliesManager />,
     fields: <FieldsAndTagsPanel />,

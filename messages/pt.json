@@ -2010,7 +2010,8 @@
       "inbox": "Caixa de entrada",
       "members": "Membros da equipe",
       "api": "Chaves de API",
-      "messaging-window": "Janela de mensagens"
+      "messaging-window": "Janela de mensagens",
+      "notifications": "Notificações"
     },
     "groups": {
       "account": "Conta",
@@ -2365,6 +2366,27 @@
       "saving": "Salvando...",
       "saveFailed": "Não foi possível salvar a configuração",
       "saveSuccess": "Janela de mensagens atualizada",
+      "loadFailed": "Não foi possível carregar a configuração"
+    },
+    "notifications": {
+      "title": "Notificações",
+      "description": "Como e quando você é avisado de uma mensagem nova.",
+      "soundTitle": "Som de mensagem nova",
+      "soundDesc": "Toca um aviso curto quando um cliente manda mensagem.",
+      "soundOn": "Ligado — toca a cada mensagem recebida",
+      "soundOff": "Desligado — a caixa de entrada fica silenciosa",
+      "soundHint": "O som só toca com esta aba aberta. Ao ligar, ele toca uma vez para você conferir o volume.",
+      "signTitle": "Assinar mensagens com o nome do atendente",
+      "signDesc": "Vários atendentes usam o mesmo número. Com isto ligado, o cliente vê quem escreveu.",
+      "signOn": "Ligado — o nome aparece em conversas individuais e em grupos",
+      "signOff": "Desligado — o nome aparece só em grupos",
+      "signHint": "Em grupos a assinatura é sempre aplicada, porque o WhatsApp não tem campo de autor. Um nome editado à mão nunca é sobrescrito.",
+      "adminOnlyHint": "Somente administradores da conta podem alterar esta opção.",
+      "save": "Salvar",
+      "saving": "Salvando...",
+      "savingDots": "",
+      "saveFailed": "Não foi possível salvar",
+      "saveSuccess": "Assinatura atualizada",
       "loadFailed": "Não foi possível carregar a configuração"
     }
   },

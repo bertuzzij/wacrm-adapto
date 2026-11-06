@@ -69,18 +69,47 @@ async function loadSenderName(
 }
 
 /**
+ * A conta pediu assinatura também em conversa individual?
+ *
+ * Padrão `false`: uma instalação que não mexeu na configuração continua
+ * enviando byte por byte o que o atendente digitou. Só liga quem escolher.
+ */
+async function loadSignIndividual(
+  db: SupabaseClient,
+  accountId: string
+): Promise<boolean> {
+  const { data, error } = await db
+    .from('accounts')
+    .select('sign_individual_messages')
+    .eq('id', accountId)
+    .maybeSingle();
+
+  if (error || !data) return false;
+  return data.sign_individual_messages === true;
+}
+
+/**
  * Texto que de fato vai para o WhatsApp.
  *
- * Em grupo, prefixa o nome do atendente: o protocolo não tem campo de
- * autor, então o nome precisa viajar no próprio texto. Fora de grupo
- * devolve o original, byte por byte.
+ * Prefixa o nome do atendente para o cliente saber quem escreveu — o
+ * protocolo não tem campo de autor, então o nome viaja no texto.
+ *
+ * Em GRUPO isso sempre valeu. Em conversa individual passou a valer
+ * também, pelo mesmo motivo: vários agentes usam o mesmo número, e o
+ * cliente que fala com "a empresa" não sabe com quem está falando. A
+ * diferença é que agora é uma decisão da conta — ver
+ * `accounts.sign_individual_messages`.
  */
 function outboundText(
   text: string,
   conversation: { kind?: string | null },
-  senderName: string | null
+  senderName: string | null,
+  signIndividual: boolean
 ): string {
-  if (conversation.kind !== 'group') return text;
+  if (conversation.kind === 'group') {
+    return applyGroupSignature(text, { agentName: senderName });
+  }
+  if (!signIndividual) return text;
   return applyGroupSignature(text, { agentName: senderName });
 }
 
@@ -271,17 +300,17 @@ export async function sendMessageToConversation(  db: SupabaseClient,
 
   const contact = conversation.contact;
 
-  // Nome de quem está enviando, para a assinatura de grupo. Lido só quando
-  // faz falta: em conversa individual o WhatsApp já mostra o número certo
-  // e um prefixo ali seria ruído.
+  // Nome de quem está enviando, para a assinatura. Lido quando faz falta:
+  // em grupo sempre (não há autor no protocolo), em conversa individual só
+  // se a conta pediu.
   //
   // Uma leitura por envio é aceitável (um SELECT por PK), e o fallback é
   // silencioso: se a query falhar, a mensagem sai sem assinatura em vez de
   // não sair.
+  const signIndividual = await loadSignIndividual(db, accountId);
+  const shouldSign = conversation.kind === 'group' || signIndividual;
   const senderName =
-    conversation.kind === 'group' && senderId
-      ? await loadSenderName(db, senderId)
-      : null;
+    shouldSign && senderId ? await loadSenderName(db, senderId) : null;
 
   // A contact is addressable by phone number OR by business-scoped user
   // ID. Meta withholds the phone number for a customer who has adopted
@@ -448,7 +477,7 @@ export async function sendMessageToConversation(  db: SupabaseClient,
       phoneNumberId: config.phone_number_id,
       accessToken,
       to: phone,
-      text: outboundText(contentText!, conversation, senderName),
+      text: outboundText(contentText!, conversation, senderName, signIndividual),
       contextMessageId,
     });
     return result.messageId;

@@ -2010,7 +2010,8 @@
       "inbox": "Inbox",
       "members": "Team members",
       "api": "API keys",
-      "messaging-window": "Messaging window"
+      "messaging-window": "Messaging window",
+      "notifications": "Notifications"
     },
     "groups": {
       "account": "Account",
@@ -2365,6 +2366,27 @@
       "saving": "Saving...",
       "saveFailed": "Could not save the setting",
       "saveSuccess": "Messaging window updated",
+      "loadFailed": "Could not load the setting"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "description": "How and when you get told about a new message.",
+      "soundTitle": "New message sound",
+      "soundDesc": "Plays a short chime when a customer writes.",
+      "soundOn": "On — plays on every incoming message",
+      "soundOff": "Off — the inbox stays silent",
+      "soundHint": "The sound only plays while this tab is open. Turning it on plays it once so you can check the volume.",
+      "signTitle": "Sign messages with the agent name",
+      "signDesc": "Several agents share one number. With this on, the customer sees who wrote.",
+      "signOn": "On — the name shows in direct chats and groups",
+      "signOff": "Off — the name shows in groups only",
+      "signHint": "In groups the signature is always applied, because WhatsApp has no author field. A hand-edited name is never overwritten.",
+      "adminOnlyHint": "Only account administrators can change this option.",
+      "save": "Save",
+      "saving": "Saving...",
+      "savingDots": "",
+      "saveFailed": "Could not save",
+      "saveSuccess": "Signature updated",
       "loadFailed": "Could not load the setting"
     }
   },

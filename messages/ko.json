@@ -2010,7 +2010,8 @@
       "inbox": "인박스",
       "members": "팀원",
       "api": "API 키",
-      "messaging-window": "메시지 전송 가능 시간"
+      "messaging-window": "메시지 전송 가능 시간",
+      "notifications": "알림"
     },
     "groups": {
       "account": "계정",
@@ -2365,6 +2366,27 @@
       "saving": "저장 중...",
       "saveFailed": "설정을 저장하지 못했습니다",
       "saveSuccess": "메시지 전송 가능 시간이 업데이트되었습니다",
+      "loadFailed": "설정을 불러오지 못했습니다"
+    },
+    "notifications": {
+      "title": "알림",
+      "description": "새 메시지를 어떻게, 언제 알릴지 설정합니다.",
+      "soundTitle": "새 메시지 소리",
+      "soundDesc": "고객이 메시지를 보내면 짧은 알림음이 재생됩니다.",
+      "soundOn": "켜짐 — 받은 메시지마다 재생",
+      "soundOff": "꺼짐 — 받은편지함이 조용합니다",
+      "soundHint": "이 탭이 열려 있을 때만 소리가 납니다. 켜면 볼륨 확인을 위해 한 번 재생됩니다.",
+      "signTitle": "상담원 이름으로 서명",
+      "signDesc": "여러 상담원이 같은 번호를 사용합니다. 켜면 고객이 누가 썼는지 볼 수 있습니다.",
+      "signOn": "켜짐 — 개인 대화와 그룹 모두에 이름 표시",
+      "signOff": "꺼짐 — 그룹에만 이름 표시",
+      "signHint": "WhatsApp에는 작성자 필드가 없어 그룹에서는 항상 서명됩니다. 직접 수정한 이름은 덮어쓰지 않습니다.",
+      "adminOnlyHint": "계정 관리자만 이 옵션을 변경할 수 있습니다.",
+      "save": "저장",
+      "saving": "저장 중...",
+      "savingDots": "",
+      "saveFailed": "저장하지 못했습니다",
+      "saveSuccess": "서명이 업데이트되었습니다",
       "loadFailed": "설정을 불러오지 못했습니다"
     }
   },

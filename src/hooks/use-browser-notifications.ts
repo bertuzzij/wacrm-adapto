@@ -17,6 +17,11 @@ import {
   viewedConversationFromLocation,
   type NotificationLabels,
 } from "@/lib/notifications/browser-notify";
+import {
+  playNotificationSound,
+  primeAudio,
+  readSoundPref,
+} from "@/adapto/notifications/sound";
 
 const serverSnapshot = () => false;
 
@@ -74,9 +79,28 @@ export function useBrowserNotifications(): void {
   // pruned by shouldNotifyForMessage.
   const seenRef = useRef<Map<string, number>>(new Map());
 
+  // Destrava o áudio no primeiro gesto do usuário.
+  //
+  // O navegador mantém o AudioContext suspenso até um clique ou tecla real,
+  // e um som disparado antes disso toca mudo. Registrar isto uma vez, no
+  // início da sessão, é o que garante que o PRIMEIRO aviso já tenha som.
+  // `once: true` porque depois do primeiro gesto o contexto fica liberado.
   useEffect(() => {
     if (!enabled) return;
-    if (getNotificationPermission() === "unsupported") return;
+    const unlock = () => primeAudio();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    // `unsupported` só desliga a notificação do sistema. O som é Web Audio
+    // e funciona normalmente onde `Notification` não existe — bloquear tudo
+    // aqui tiraria o áudio de quem só queria o áudio.
 
     const supabase = createClient();
     let cancelled = false;
@@ -130,9 +154,6 @@ export function useBrowserNotifications(): void {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
-          // Re-check every time: the user can revoke permission in the
-          // browser without the preference flipping.
-          if (getNotificationPermission() !== "granted") return;
           const msg = payload.new as Message;
           const shouldNotify = shouldNotifyForMessage(msg, {
             documentVisible: document.visibilityState === "visible",
@@ -143,6 +164,16 @@ export function useBrowserNotifications(): void {
             seen: seenRef.current,
           });
           if (!shouldNotify) return;
+
+          // O som NÃO depende da permissão de notificação do sistema, então
+          // sai antes desta checagem. Antes ele ficava depois, e negar a
+          // permissão do navegador silenciava também o áudio — que é outro
+          // recurso e outra decisão do usuário.
+          if (readSoundPref()) playNotificationSound();
+
+          // Re-check every time: the user can revoke permission in the
+          // browser without the preference flipping.
+          if (getNotificationPermission() !== "granted") return;
           void notify(msg);
         },
       )

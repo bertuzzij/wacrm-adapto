@@ -2010,7 +2010,8 @@
       "inbox": "Bandeja de entrada",
       "members": "Miembros del equipo",
       "api": "Claves de API",
-      "messaging-window": "Ventana de mensajes"
+      "messaging-window": "Ventana de mensajes",
+      "notifications": "Notificaciones"
     },
     "groups": {
       "account": "Cuenta",
@@ -2365,6 +2366,27 @@
       "saving": "Guardando...",
       "saveFailed": "No se pudo guardar la configuración",
       "saveSuccess": "Ventana de mensajes actualizada",
+      "loadFailed": "No se pudo cargar la configuración"
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "description": "Cómo y cuándo te avisan de un mensaje nuevo.",
+      "soundTitle": "Sonido de mensaje nuevo",
+      "soundDesc": "Reproduce un aviso corto cuando un cliente escribe.",
+      "soundOn": "Activado — suena con cada mensaje recibido",
+      "soundOff": "Desactivado — la bandeja queda en silencio",
+      "soundHint": "El sonido solo suena con esta pestaña abierta. Al activarlo suena una vez para comprobar el volumen.",
+      "signTitle": "Firmar mensajes con el nombre del agente",
+      "signDesc": "Varios agentes usan el mismo número. Con esto activo, el cliente ve quién escribió.",
+      "signOn": "Activado — el nombre aparece en conversaciones individuales y grupos",
+      "signOff": "Desactivado — el nombre aparece solo en grupos",
+      "signHint": "En grupos la firma siempre se aplica, porque WhatsApp no tiene campo de autor. Un nombre editado a mano nunca se sobrescribe.",
+      "adminOnlyHint": "Solo los administradores de la cuenta pueden cambiar esta opción.",
+      "save": "Guardar",
+      "saving": "Guardando...",
+      "savingDots": "",
+      "saveFailed": "No se pudo guardar",
+      "saveSuccess": "Firma actualizada",
       "loadFailed": "No se pudo cargar la configuración"
     }
   },
