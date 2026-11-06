@@ -373,7 +373,33 @@ async function toMetaBody(event: WahaEvent): Promise<Record<string, unknown> | n
   }
 
   if (event.event === 'message' || event.event === 'message.any') {
-    if (payload.fromMe || isIgnoredChat(payload.from)) return null
+    // Mensagem enviada pelo próprio número.
+    //
+    // Em conversa individual ela é descartada: o CRM já gravou a sua
+    // própria cópia ao enviar, e aceitar o eco duplicaria a thread.
+    //
+    // Em grupo é o único jeito de ver o que os atendentes mandam direto
+    // pelo celular — que é como o número é usado de verdade. A inserção é
+    // idempotente por (conversation_id, message_id) e `ignoreDuplicates`
+    // (migração 037), então o eco de uma mensagem enviada pelo próprio CRM
+    // cai como replay em vez de virar linha nova.
+    if (payload.fromMe) {
+      if (!isGroupChatId(payload.from)) return null
+      const groupKey = groupPhoneKey(payload.from!)
+      const message = buildMetaMessage(payload, groupKey)
+      if (!message) return null
+      const groupName = await fetchGroupName(payload.from!)
+      return wrap({
+        contacts: [
+          { profile: { name: groupDisplayName(groupName) }, wa_id: groupKey },
+        ],
+        // Marca a origem para o handler gravar `sender_type = 'agent'`
+        // em vez de 'customer'. Campo fora do padrão Meta de propósito:
+        // o handler o lê e não repassa a mais ninguém.
+        messages: [{ ...message, crm_sender: 'agent' }],
+      })
+    }
+    if (isIgnoredChat(payload.from)) return null
 
     // Grupo: o identificador é o JID do grupo (não um telefone) e o nome
     // vem do endpoint de grupos do WAHA — o evento de mensagem não o

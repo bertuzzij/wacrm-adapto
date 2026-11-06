@@ -693,6 +693,15 @@ async function processMessage(
 
   const receivedAt = new Date(parseInt(message.timestamp) * 1000).toISOString()
 
+  // Origem da mensagem. O webhook WAHA marca `crm_sender: 'agent'` numa
+  // mensagem que o próprio número enviou (fromMe) dentro de um grupo —
+  // sem isso ela seria gravada como se o cliente tivesse escrito.
+  // Meta nunca manda este campo, então o caminho oficial segue igual.
+  const senderType =
+    (message as { crm_sender?: string }).crm_sender === 'agent'
+      ? 'agent'
+      : 'customer'
+
   // Idempotent insert. Meta retries webhook deliveries (a slow ack, a
   // transient 5xx), and each retry replays the exact same message.id. The
   // unique index on (conversation_id, message_id) added in migration 037
@@ -706,7 +715,7 @@ async function processMessage(
     .upsert(
       {
         conversation_id: conversation.id,
-        sender_type: 'customer',
+        sender_type: senderType,
         content_type: contentType,
         content_text: contentText,
         media_url: mediaUrl,
@@ -745,11 +754,14 @@ async function processMessage(
     return
   }
 
-  const isFirstInboundMessage = await claimFirstInboundMessage(
-    supabaseAdmin(),
-    conversation,
-    receivedAt
-  )
+  // Só uma mensagem DO CLIENTE pode reivindicar "primeira mensagem de
+  // entrada". Uma mensagem nossa num grupo recém-criado não é o cliente
+  // chegando — marcá-la faria o gatilho `first_inbound_message` disparar
+  // por causa de quem atendeu primeiro.
+  const isFirstInboundMessage =
+    senderType === 'agent'
+      ? false
+      : await claimFirstInboundMessage(supabaseAdmin(), conversation, receivedAt)
 
   // Update conversation. The unread bump is done DB-side (migration 037's
   // bump_conversation_on_inbound) rather than as a read-modify-write of the
@@ -758,13 +770,25 @@ async function processMessage(
   // both reads see the same value and write the same increment, losing one
   // (issue #369). The RPC increments in a single UPDATE and refreshes the
   // last-message summary in the same statement.
-  const { error: convError } = await supabaseAdmin().rpc(
-    'bump_conversation_on_inbound',
-    {
-      p_conversation_id: conversation.id,
-      p_last_message_text: contentText || `[${message.type}]`,
-    }
-  )
+  //
+  // Uma mensagem que o próprio número enviou (fromMe em grupo) NÃO é
+  // entrada: incrementar aqui faria a conversa aparecer como não-lida
+  // para quem acabou de escrever nela. A função do banco sempre soma, então
+  // a decisão fica nesta chamada.
+  const { error: convError } =
+    senderType === 'agent'
+      ? await supabaseAdmin()
+          .from('conversations')
+          .update({
+            last_message_text: contentText || `[${message.type}]`,
+            last_message_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', conversation.id)
+      : await supabaseAdmin().rpc('bump_conversation_on_inbound', {
+          p_conversation_id: conversation.id,
+          p_last_message_text: contentText || `[${message.type}]`,
+        })
 
   if (convError) {
     console.error('Error updating conversation:', convError)
@@ -774,15 +798,27 @@ async function processMessage(
   // separate conditional statement rather than a `status` field on the
   // update above so the write can be gated on the row's CURRENT status in
   // SQL — see the helper for why that matters.
-  await reopenClosedConversation(supabaseAdmin(), conversation)
+  //
+  // Só cliente reabre: uma mensagem nossa não é sinal de que o atendimento
+  // recomeçou.
+  if (senderType !== 'agent') {
+    await reopenClosedConversation(supabaseAdmin(), conversation)
+  }
 
   // If this contact was a recent broadcast recipient, flag the reply
   // so the broadcast's `replied_count` advances (via the aggregate
   // trigger installed in migration 003).
-  await flagBroadcastReplyIfAny(accountId, contactRecord.id)
+  if (senderType !== 'agent') {
+    await flagBroadcastReplyIfAny(accountId, contactRecord.id)
+  }
 
   // ============================================================
   // Flow runner dispatch.
+  //
+  // Mensagem enviada pelo próprio número (fromMe em grupo) NÃO entra aqui:
+  // ela não é estímulo de nada. Deixar passar faria fluxos e automações
+  // reagirem ao que os atendentes escrevem — o risco clássico de bot
+  // respondendo a bot, dentro de um grupo onde todo mundo lê.
   //
   // If the runner consumes the message (it either advanced an active
   // run or started a new one), we suppress the `new_message_received`
@@ -800,6 +836,10 @@ async function processMessage(
   // no active flows take the runner's early-exit "no_match" path
   // basically for free (one indexed SELECT for the active run).
   // ============================================================
+  if (senderType === 'agent') {
+    return
+  }
+
   const flowResult = await dispatchInboundToFlows({
     accountId,
     userId: configOwnerUserId,
