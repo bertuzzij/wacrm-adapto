@@ -898,11 +898,9 @@ export function MessageComposer({
       {/* Hint sits outside the flex row so its height doesn't push
           `items-end` buttons below the textarea. Indented to line up
           under the textarea left edge. */}
-      {!draft && !recording && (
-        <p className="mt-1 pl-1 text-[10px] text-muted-foreground sm:pl-[5.5rem]">
-          {t("draftHint")}
-        </p>
-      )}
+      {/* A dica "Toque em ✨ para redigir" saiu do rodapé: repetia, embaixo
+          do campo, o que o próprio botão ✨ na barra já mostra. Em notebook
+          ela ainda ficava deslocada do texto por causa do recuo fixo. */}
 
       {/* Interactive-message builder dialog. */}
       <Dialog open={interactiveOpen} onOpenChange={setInteractiveOpen}>

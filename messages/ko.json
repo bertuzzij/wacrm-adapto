@@ -414,7 +414,6 @@
       "networkError": "네트워크 오류",
       "documentFallback": "문서",
       "you": "나",
-      "groupSendWarning": "그룹으로 전송됩니다. 모든 참여자가 메시지를 받습니다.",
       "retryConfirm": "이 메시지를 다시 보낼까요? 이미 도착했다면 고객이 두 번 받게 됩니다."
     },
     "sessionTimer": {
@@ -425,7 +424,6 @@
       "noWindow": "메시지 제한 없음"
     },
     "composer": {
-      "draftHint": "✨를 눌러 AI로 답장 초안을 작성하세요 — 보내기 전에 수정할 수 있습니다",
       "sessionExpiredHint": "24시간 세션이 만료되었습니다. 다시 연결하려면 템플릿을 사용하세요.",
       "templates": "템플릿",
       "readOnlyPlaceholder": "읽기 전용 — 뷰어는 열람만 가능하고 답장할 수 없습니다",

@@ -414,7 +414,6 @@
       "networkError": "error de red",
       "documentFallback": "Documento",
       "you": "Tú",
-      "groupSendWarning": "Mensaje enviado al grupo: todos los participantes lo recibirán.",
       "retryConfirm": "¿Reenviar este mensaje? Si ya llegó al cliente, lo recibirá dos veces."
     },
     "sessionTimer": {
@@ -425,7 +424,6 @@
       "noWindow": "Sin ventana de mensajes"
     },
     "composer": {
-      "draftHint": "Toca ✨ para redactar una respuesta con IA; puedes editarla antes de enviarla",
       "sessionExpiredHint": "La sesión de 24 horas expiró. Usa una plantilla para retomar el contacto.",
       "templates": "Plantillas",
       "readOnlyPlaceholder": "Solo lectura: los observadores pueden navegar, pero no responder",

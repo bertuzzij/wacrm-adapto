@@ -414,7 +414,6 @@
       "networkError": "network error",
       "documentFallback": "Document",
       "you": "You",
-      "groupSendWarning": "Sending to the group: every participant will receive it.",
       "retryConfirm": "Resend this message? If it already reached the customer, they will get it twice."
     },
     "sessionTimer": {
@@ -425,7 +424,6 @@
       "noWindow": "No messaging window"
     },
     "composer": {
-      "draftHint": "Tap the ✨ to draft a reply with AI — you can edit it before sending",
       "sessionExpiredHint": "24-hour session expired. Use a template to re-engage.",
       "templates": "Templates",
       "readOnlyPlaceholder": "Read-only — viewers can browse but not reply",

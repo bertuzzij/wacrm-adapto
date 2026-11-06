@@ -1403,11 +1403,10 @@ export function MessageThread({
         replyTo={replyTo}
         onClearReply={() => setReplyTo(null)}
       />
-      {conversation.kind === "group" && (
-        <p className="border-t border-border bg-muted/40 px-4 py-2 text-center text-xs text-muted-foreground">
-          {t("groupSendWarning")}
-        </p>
-      )}
+      {/* O aviso "mensagem enviada para o grupo" saiu daqui: ocupava uma
+          faixa fixa no rodapé para dizer o que o próprio seletor de
+          conversa já indica (o cabeçalho mostra o grupo, e o compositor só
+          existe em conversa onde se pode responder). */}
 
       <TemplatePicker
         open={templateModalOpen}
