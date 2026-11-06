@@ -12,6 +12,7 @@ import {
   type WaIdentity,
 } from '@/lib/whatsapp/wa-identity'
 import { findExistingContact, isUniqueViolation } from '@/lib/contacts/dedupe'
+import { enrichContact } from '@/adapto/contact-sync/enrich'
 import { reopenClosedConversation } from '@/lib/conversations/reopen'
 import { claimFirstInboundMessage } from '@/lib/conversations/first-inbound'
 import {
@@ -614,6 +615,41 @@ async function processMessage(
   )
   if (!contactOutcome) return
   const contactRecord = contactOutcome.contact
+
+  // Nome e foto do contato, buscados no WAHA em segundo plano.
+  //
+  // Roda em `after()` porque a mensagem do cliente não pode esperar uma
+  // consulta de rede cosmética. O caso que isto resolve: contato antigo cujo
+  // nome nunca foi sincronizado — a sincronização em lote lista os chats
+  // recentes, e um contato fora dessa janela ficava com o telefone como
+  // nome para sempre, mesmo com o WhatsApp sabendo o nome certo.
+  //
+  // Só contatos sem nome ou com o telefone no lugar do nome entram aqui;
+  // `enrichContact` ainda protege `name_source = 'manual'`.
+  {
+    const phoneDigits = (contactRecord.phone ?? '').replace(/\D/g, '')
+    const needsName =
+      !contactRecord.name?.trim() ||
+      contactRecord.name.trim() === phoneDigits
+    if (needsName && !contactRecord.phone?.startsWith('group:')) {
+      const contactIdForEnrich = contactRecord.id
+      const phoneForEnrich = contactRecord.phone
+      const nameForEnrich = contactRecord.name
+      const sourceForEnrich = contactRecord.name_source ?? null
+      const waUserForEnrich = contactRecord.wa_user_id ?? null
+      const avatarForEnrich = contactRecord.avatar_synced_at ?? null
+      after(async () => {
+        await enrichContact(supabaseAdmin(), {
+          contactId: contactIdForEnrich,
+          phone: phoneForEnrich,
+          name: nameForEnrich,
+          nameSource: sourceForEnrich,
+          waUserId: waUserForEnrich,
+          avatarSyncedAt: avatarForEnrich,
+        })
+      })
+    }
+  }
 
   // Find or create conversation
   const convResult = await findOrCreateConversation(
