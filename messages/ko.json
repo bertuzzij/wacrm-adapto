@@ -2108,7 +2108,8 @@
         "document": "📄 문서",
         "location": "📍 위치",
         "template": "📋 템플릿"
-      }
+      },
+      "enableNow": "알림 켜기"
     },
     "apiKeys": {
       "title": "API 키",

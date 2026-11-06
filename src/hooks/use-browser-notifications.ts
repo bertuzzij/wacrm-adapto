@@ -86,7 +86,9 @@ export function useBrowserNotifications(): void {
   // início da sessão, é o que garante que o PRIMEIRO aviso já tenha som.
   // `once: true` porque depois do primeiro gesto o contexto fica liberado.
   useEffect(() => {
-    if (!enabled) return;
+    // Sem gate de `enabled`: o áudio é independente do opt-in de
+    // notificação. Amarrar os dois fazia o som nunca destravar para quem
+    // só queria o aviso sonoro.
     const unlock = () => primeAudio();
     window.addEventListener("pointerdown", unlock, { once: true });
     window.addEventListener("keydown", unlock, { once: true });
@@ -94,13 +96,15 @@ export function useBrowserNotifications(): void {
       window.removeEventListener("pointerdown", unlock);
       window.removeEventListener("keydown", unlock);
     };
-  }, [enabled]);
+  }, []);
 
   useEffect(() => {
-    if (!enabled) return;
-    // `unsupported` só desliga a notificação do sistema. O som é Web Audio
-    // e funciona normalmente onde `Notification` não existe — bloquear tudo
-    // aqui tiraria o áudio de quem só queria o áudio.
+    // `unsupported` não impede o som: são recursos independentes. O que
+    // NÃO pode acontecer é o som depender do opt-in de notificação —
+    // `enabled` é a preferência de NOTIFICAÇÃO, não de áudio. Amarrar os
+    // dois foi o que deixou a caixa de entrada muda para quem só queria
+    // o aviso sonoro (o usuário ligava o som e nada acontecia, porque o
+    // switch de notificação continuava desligado).
 
     const supabase = createClient();
     let cancelled = false;
@@ -165,14 +169,13 @@ export function useBrowserNotifications(): void {
           });
           if (!shouldNotify) return;
 
-          // O som NÃO depende da permissão de notificação do sistema, então
-          // sai antes desta checagem. Antes ele ficava depois, e negar a
-          // permissão do navegador silenciava também o áudio — que é outro
-          // recurso e outra decisão do usuário.
+          // Som: preferência própria, independente do switch de notificação.
           if (readSoundPref()) playNotificationSound();
 
-          // Re-check every time: the user can revoke permission in the
-          // browser without the preference flipping.
+          // Notificação do sistema: exige o opt-in E a permissão do
+          // navegador. Re-checada a cada evento porque o usuário pode
+          // revogar a permissão sem o switch mudar.
+          if (!enabled) return;
           if (getNotificationPermission() !== "granted") return;
           void notify(msg);
         },

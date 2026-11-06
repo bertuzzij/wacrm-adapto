@@ -2108,7 +2108,8 @@
         "document": "📄 Documento",
         "location": "📍 Ubicación",
         "template": "📋 Plantilla"
-      }
+      },
+      "enableNow": "Activar notificaciones"
     },
     "apiKeys": {
       "title": "Claves de API",

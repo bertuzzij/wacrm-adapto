@@ -149,12 +149,34 @@ export function BrowserNotificationsCard({ className }: { className?: string }) 
               </p>
             )}
 
+            {/* Botão explícito para pedir a permissão.
+                O switch sozinho não bastava: quem olhava a tela não sabia
+                que era preciso CLICAR nele para o navegador perguntar, e
+                um switch cinza lê como "desabilitado", não como "clique
+                aqui". Este botão é o caminho óbvio. */}
+            {permission === 'default' && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void onToggle(true)}
+                disabled={requesting}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {requesting ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <BellRing className="size-4" />
+                )}
+                {t('enableNow')}
+              </Button>
+            )}
+
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={sendTest}
-              disabled={!checked}
+              disabled={permission !== 'granted'}
             >
               <BellRing className="size-4" />
               {t('sendTest')}

@@ -2108,7 +2108,8 @@
         "document": "📄 Document",
         "location": "📍 Location",
         "template": "📋 Template"
-      }
+      },
+      "enableNow": "Enable notifications"
     },
     "apiKeys": {
       "title": "API keys",
