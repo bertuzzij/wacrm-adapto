@@ -616,37 +616,34 @@ async function processMessage(
   if (!contactOutcome) return
   const contactRecord = contactOutcome.contact
 
-  // Nome e foto do contato, buscados no WAHA em segundo plano.
+  // Nome e foto do contato, buscados no WAHA.
   //
-  // Roda em `after()` porque a mensagem do cliente não pode esperar uma
-  // consulta de rede cosmética. O caso que isto resolve: contato antigo cujo
-  // nome nunca foi sincronizado — a sincronização em lote lista os chats
+  // NÃO usa `after()`: este código já roda DENTRO do `after()` do POST
+  // (processWebhook é chamado lá), e `after()` aninhado não é executado —
+  // o primeiro teste em produção foi justamente o que revelou isso.
+  //
+  // Também não é aguardado no caminho crítico: a promessa fica solta de
+  // propósito, e o `enrichContact` engole os próprios erros. A mensagem do
+  // cliente não pode esperar uma consulta cosmética, e o comentário do
+  // `after()` do POST garante que o processo continua vivo até o fim.
+  //
+  // O caso que isto resolve: contato antigo cujo nome nunca foi
+  // sincronizado — a sincronização em lote lista os 200 chats mais
   // recentes, e um contato fora dessa janela ficava com o telefone como
   // nome para sempre, mesmo com o WhatsApp sabendo o nome certo.
-  //
-  // Só contatos sem nome ou com o telefone no lugar do nome entram aqui;
-  // `enrichContact` ainda protege `name_source = 'manual'`.
   {
     const phoneDigits = (contactRecord.phone ?? '').replace(/\D/g, '')
     const needsName =
       !contactRecord.name?.trim() ||
       contactRecord.name.trim() === phoneDigits
     if (needsName && !contactRecord.phone?.startsWith('group:')) {
-      const contactIdForEnrich = contactRecord.id
-      const phoneForEnrich = contactRecord.phone
-      const nameForEnrich = contactRecord.name
-      const sourceForEnrich = contactRecord.name_source ?? null
-      const waUserForEnrich = contactRecord.wa_user_id ?? null
-      const avatarForEnrich = contactRecord.avatar_synced_at ?? null
-      after(async () => {
-        await enrichContact(supabaseAdmin(), {
-          contactId: contactIdForEnrich,
-          phone: phoneForEnrich,
-          name: nameForEnrich,
-          nameSource: sourceForEnrich,
-          waUserId: waUserForEnrich,
-          avatarSyncedAt: avatarForEnrich,
-        })
+      void enrichContact(supabaseAdmin(), {
+        contactId: contactRecord.id,
+        phone: contactRecord.phone,
+        name: contactRecord.name,
+        nameSource: contactRecord.name_source ?? null,
+        waUserId: contactRecord.wa_user_id ?? null,
+        avatarSyncedAt: contactRecord.avatar_synced_at ?? null,
       })
     }
   }
