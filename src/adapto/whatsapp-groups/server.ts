@@ -20,6 +20,7 @@
 // ============================================================
 
 import { wahaBaseUrl, wahaSession } from '@/lib/whatsapp/waha';
+import { toGroupMembers, type GroupMember } from './members';
 
 /** Quanto tempo um nome de grupo fica em cache. */
 const GROUP_NAME_TTL_MS = 10 * 60 * 1000;
@@ -34,9 +35,43 @@ export function clearGroupNameCache(): void {
   cache.clear();
 }
 
+/**
+ * Membros do grupo, com nome e telefone.
+ *
+ * Sem cache: a lista muda quando alguém entra ou sai, e uma menção a quem
+ * já saiu falharia. A chamada é sob demanda (o atendente abriu o seletor de
+ * menção), não a cada mensagem — o custo é aceitável.
+ */
+export async function fetchGroupMembers(
+  groupId: string
+): Promise<GroupMember[]> {
+  const url = `${wahaBaseUrl()}/api/${encodeURIComponent(wahaSession())}/groups/${encodeURIComponent(groupId)}`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { headers: headers(), signal: controller.signal });
+    if (!res.ok) return [];
+    const data = (await res.json()) as WahaGroupInfo;
+    return toGroupMembers(data?.Participants);
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 interface WahaGroupInfo {
   JID?: string;
   Name?: string | null;
+  Participants?: Array<{
+    JID?: string;
+    PhoneNumber?: string;
+    LID?: string;
+    IsAdmin?: boolean;
+    IsSuperAdmin?: boolean;
+    DisplayName?: string;
+  }>;
 }
 
 function headers(): Record<string, string> {

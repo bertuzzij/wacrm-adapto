@@ -415,6 +415,9 @@ export interface SendTextMessageArgs {
   /** Meta's message_id of the message being replied to. Adds a `context` field
    *  so WhatsApp renders the new message as a reply with a quote preview. */
   contextMessageId?: string
+  /** JIDs (`5516…@c.us`) a marcar como menção. Só o transporte WAHA usa;
+   *  a Meta não tem menção em texto livre. */
+  mentions?: string[]
 }
 
 /**
@@ -424,9 +427,9 @@ export interface SendTextMessageArgs {
 export async function sendTextMessage(
   args: SendTextMessageArgs
 ): Promise<MetaSendResult> {
-  const { phoneNumberId, accessToken, to, text, contextMessageId } = args
+  const { phoneNumberId, accessToken, to, text, contextMessageId, mentions } = args
   if (isWahaMode()) {
-    return wahaSendText({ to, text, replyTo: contextMessageId })
+    return wahaSendText({ to, text, replyTo: contextMessageId, mentions })
   }
   const url = `${META_API_BASE}/${phoneNumberId}/messages`
   const body: Record<string, unknown> = {

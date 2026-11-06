@@ -41,6 +41,7 @@ import {
 import { useCan } from "@/hooks/use-can";
 import { EmojiButton } from "@/adapto/emoji-picker/picker";
 import { insertEmojiAtSelection } from "@/adapto/emoji-picker/insert-emoji";
+import { MentionButton } from "@/adapto/whatsapp-groups/mention-button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -114,6 +115,8 @@ interface MediaDraft {
 interface MessageComposerProps {
   conversationId: string;
   sessionExpired: boolean;
+  /** Habilita o botão de menção; só grupo tem quem mencionar. */
+  isGroup?: boolean;
   onSend: (text: string, replyToId?: string) => void;
   onSendMedia: (payload: SendMediaPayload) => void;
   onSendInteractive: (payload: InteractiveMessagePayload, replyToId?: string) => void;
@@ -136,6 +139,7 @@ const OPUS_ENCODER_PATH = "/opus/encoderWorker.min.js";
 export function MessageComposer({
   conversationId,
   sessionExpired,
+  isGroup = false,
   onSend,
   onSendMedia,
   onSendInteractive,
@@ -263,6 +267,29 @@ export function MessageComposer({
       const end = el?.selectionEnd ?? text.length;
 
       const result = insertEmojiAtSelection(text, emoji, start, end);
+      setText(result.text);
+
+      window.setTimeout(() => {
+        const node = textareaRef.current;
+        if (!node) return;
+        node.focus();
+        node.setSelectionRange(result.caret, result.caret);
+        adjustHeight();
+      }, 0);
+    },
+    [text, adjustHeight]
+  );
+
+  // Menção: mesma inserção no cursor do emoji, com o `@telefone` e um
+  // espaço depois. O espaço é deliberado — sem ele, quem digita em seguida
+  // emenda o texto no número e a menção deixa de funcionar.
+  const handlePickMention = useCallback(
+    (phone: string) => {
+      const el = textareaRef.current;
+      const start = el?.selectionStart ?? text.length;
+      const end = el?.selectionEnd ?? text.length;
+
+      const result = insertEmojiAtSelection(text, `@${phone} `, start, end);
       setText(result.text);
 
       window.setTimeout(() => {
@@ -746,6 +773,16 @@ export function MessageComposer({
           {/* Emoji picker. Só o seletor; a inserção é feita no ponto do
               cursor pelo handler abaixo. */}
           <EmojiButton onPick={handlePickEmoji} disabled={inputsDisabled || busy} />
+
+          {/* Menção: só em grupo, onde há outros participantes. Insere
+              `@telefone ` no cursor — é o formato que o WhatsApp entende. */}
+          {isGroup && (
+            <MentionButton
+              conversationId={conversationId}
+              onPick={handlePickMention}
+              disabled={inputsDisabled || busy}
+            />
+          )}
 
           <GatedButton
             variant="ghost"

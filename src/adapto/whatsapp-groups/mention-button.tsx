@@ -1,0 +1,174 @@
+'use client';
+
+// ============================================================
+// Botão de menção (@) para conversas de grupo.
+//
+// O WhatsApp menciona por TELEFONE. O nome que o cliente vê é o que ele
+// tem salvo na própria agenda — não o nosso. Então a lista mostra nome +
+// telefone (para o atendente reconhecer), mas o que entra no texto é
+// `@5516…`.
+//
+// A lista vem do WAHA pelo servidor, nunca do navegador: a chave da API
+// não pode chegar ao cliente.
+//
+// Só aparece em grupo. Numa conversa individual não há quem mencionar —
+// a outra pessoa já é a conversa.
+// ============================================================
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AtSign, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+import { cn } from '@/lib/utils';
+import type { GroupMember } from '@/adapto/whatsapp-groups/members';
+
+export interface MentionButtonProps {
+  conversationId: string;
+  /** Recebe o telefone escolhido; o composer insere `@telefone ` no cursor. */
+  onPick: (phone: string) => void;
+  disabled?: boolean;
+}
+
+export function MentionButton({
+  conversationId,
+  onPick,
+  disabled,
+}: MentionButtonProps) {
+  const t = useTranslations('Inbox.mentions');
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [members, setMembers] = useState<GroupMember[]>([]);
+  const [query, setQuery] = useState('');
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Busca ao abrir, não no mount: a maioria das mensagens não menciona
+  // ninguém, e uma chamada por conversa aberta seria desperdício.
+  useEffect(() => {
+    if (!open || members.length > 0) return;
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/adapto/conversations/${conversationId}/members`)
+      .then((r) => (r.ok ? r.json() : { members: [] }))
+      .then((data: { members?: GroupMember[] }) => {
+        if (!cancelled) setMembers(data.members ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setMembers([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, conversationId, members.length]);
+
+  // Fecha ao clicar fora e no Escape, como o seletor de emoji.
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: MouseEvent) {
+      if (!wrapperRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  const handlePick = useCallback(
+    (phone: string) => {
+      onPick(phone);
+      setOpen(false);
+      setQuery('');
+    },
+    [onPick]
+  );
+
+  const filtered = members.filter((m) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return m.name.toLowerCase().includes(q) || m.phone.includes(q);
+  });
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
+        aria-label={t('open')}
+        aria-expanded={open}
+        title={t('open')}
+        className={cn(
+          'inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors',
+          'hover:bg-muted hover:text-foreground',
+          'disabled:cursor-not-allowed disabled:opacity-50'
+        )}
+      >
+        <AtSign className="h-4 w-4" />
+      </button>
+
+      {open && (
+        <div className="absolute bottom-full left-0 z-50 mb-2 w-72 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+          <div className="border-b border-border p-2">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('search')}
+              autoFocus
+              className="w-full rounded-md border border-border bg-muted px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          <div className="max-h-64 overflow-y-auto">
+            {loading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : filtered.length === 0 ? (
+              <p className="px-3 py-6 text-center text-xs text-muted-foreground">
+                {members.length === 0 ? t('empty') : t('noMatch')}
+              </p>
+            ) : (
+              filtered.map((m) => (
+                <button
+                  key={m.phone}
+                  type="button"
+                  onClick={() => handlePick(m.phone)}
+                  className="flex w-full items-start gap-2 px-3 py-2 text-left transition-colors hover:bg-muted"
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-foreground">
+                    {(m.name || m.phone).charAt(0).toUpperCase()}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs font-medium text-foreground">
+                      {m.name || m.phone}
+                      {m.isAdmin && (
+                        <span className="ml-1.5 rounded bg-amber-500/15 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                          {t('admin')}
+                        </span>
+                      )}
+                    </span>
+                    {/* O telefone fica visível porque é ele que será
+                        mencionado — o nome que o cliente vê é o da agenda
+                        dele, não o nosso. */}
+                    {m.name && (
+                      <span className="block truncate text-[10px] text-muted-foreground">
+                        {m.phone}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -567,6 +567,13 @@
       "search": "Search emoji",
       "clear": "Clear search",
       "loadFailed": "Could not load the emojis"
+    },
+    "mentions": {
+      "open": "Mention someone",
+      "search": "Search member...",
+      "empty": "No member with a visible phone in this group",
+      "noMatch": "No member found",
+      "admin": "admin"
     }
   },
   "Contacts": {

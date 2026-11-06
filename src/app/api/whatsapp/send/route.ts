@@ -62,6 +62,7 @@ export async function POST(request: Request) {
       template_message_params,
       interactive_payload,
       reply_to_message_id,
+      mentioned_phones,
     } = body
 
     if ((!conversationIdInput && !contact_id) || !message_type) {
@@ -170,6 +171,11 @@ export async function POST(request: Request) {
         interactivePayload: interactive_payload,
         replyToMessageId: reply_to_message_id,
         senderId: userId,
+        // Telefones mencionados no texto, em dígitos. Só o transporte WAHA
+        // usa; a Meta não tem menção em texto livre.
+        mentionedPhones: Array.isArray(mentioned_phones)
+          ? mentioned_phones.filter((p: unknown) => typeof p === "string")
+          : undefined,
       })
 
       return NextResponse.json({

@@ -50,6 +50,9 @@ import {
   templateHeaderMediaUrl,
 } from '@/lib/whatsapp/template-body';
 import { applyGroupSignature } from '@/adapto/group-signature/signature';
+import { mentionJid, mentionedPhones as mentionedPhonesInText } from '@/adapto/whatsapp-groups/members';
+import { fetchGroupMembers } from '@/adapto/whatsapp-groups/server';
+import { groupChatIdFromPhoneKey } from '@/adapto/whatsapp-groups/identity';
 
 /** Nome do atendente, ou null quando não dá para saber. */
 async function loadSenderName(
@@ -153,6 +156,15 @@ export interface SendMessageParams {
   interactivePayload?: InteractiveMessagePayload | null;
   replyToMessageId?: string | null;
   senderId?: string | null;
+  /**
+   * Telefones mencionados, informados pelo chamador.
+   *
+   * NÃO é a fonte da verdade: as menções são extraídas do próprio texto no
+   * servidor, cruzadas com os membros reais do grupo. Isto existe para
+   * chamadores que não têm o texto completo (a API pública, por exemplo) e
+   * é ignorado quando o texto permite calcular.
+   */
+  mentionedPhones?: string[];
 }
 
 export interface SendMessageResult {
@@ -266,6 +278,7 @@ export async function sendMessageToConversation(  db: SupabaseClient,
     templateMessageParams,
     interactivePayload,
     replyToMessageId,
+    mentionedPhones,
   } = params;
 
   if (!conversationId) {
@@ -300,7 +313,26 @@ export async function sendMessageToConversation(  db: SupabaseClient,
 
   const contact = conversation.contact;
 
-  // Nome de quem está enviando, para a assinatura. Lido quando faz falta:
+  // Menções: extraídas no SERVIDOR, dos membros reais do grupo.
+  //
+  // A tela poderia mandar a lista, mas o atendente edita o texto antes de
+  // enviar — se ele apagar um `@`, a lista da tela ficaria mencionando
+  // alguém que não está mais no texto. Aqui o texto é a fonte da verdade e
+  // a lista de membros é só o filtro de quem é válido.
+  let mentions: string[] | undefined
+  if (conversation.kind === 'group' && messageType === 'text' && contentText) {
+    const groupJid = groupChatIdFromPhoneKey(contact?.phone)
+    if (groupJid) {
+      const groupMembers = await fetchGroupMembers(groupJid)
+      const found = mentionedPhonesInText(contentText, groupMembers)
+      if (found.length > 0) mentions = found.map(mentionJid)
+    }
+  }
+  // Chamador que não passou texto (API pública): usa o que ele informou.
+  if (!mentions && mentionedPhones?.length) {
+    mentions = mentionedPhones.map(mentionJid)
+  }
+
   // em grupo sempre (não há autor no protocolo), em conversa individual só
   // se a conta pediu.
   //
@@ -479,6 +511,7 @@ export async function sendMessageToConversation(  db: SupabaseClient,
       to: phone,
       text: outboundText(contentText!, conversation, senderName, signIndividual),
       contextMessageId,
+      mentions,
     });
     return result.messageId;
   };

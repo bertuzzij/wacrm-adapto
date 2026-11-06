@@ -649,6 +649,10 @@ export function MessageThread({
             message_type: "text",
             content_text: text,
             reply_to_message_id: replyToId,
+            // As menções são extraídas no servidor, a partir dos membros
+            // reais do grupo: a tela poderia mandar um telefone que o
+            // atendente já apagou do texto, e o WhatsApp renderizaria um
+            // chip de quem não foi mencionado.
           }),
         });
 
@@ -1356,6 +1360,7 @@ export function MessageThread({
       <MessageComposer
         conversationId={conversation.id}
         sessionExpired={sessionInfo.expired}
+        isGroup={conversation.kind === "group"}
         onSend={handleSend}
         onSendMedia={handleSendMedia}
         onSendInteractive={handleSendInteractive}

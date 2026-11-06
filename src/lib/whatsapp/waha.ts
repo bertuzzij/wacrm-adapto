@@ -117,12 +117,19 @@ export async function wahaSendText(args: {
   to: string
   text: string
   replyTo?: string
+  /** JIDs (`5516…@c.us`) a marcar como menção no texto. */
+  mentions?: string[]
 }): Promise<{ messageId: string }> {
   const data = await wahaRequest('POST', '/api/sendText', {
     session: wahaSession(),
     chatId: toChatId(args.to),
     text: args.text,
     ...(args.replyTo ? { reply_to: args.replyTo } : {}),
+    // O WAHA só renderiza a menção como chip se o JID vier nesta lista;
+    // o `@telefone` no texto sozinho fica como texto literal.
+    ...(args.mentions && args.mentions.length > 0
+      ? { mentions: args.mentions }
+      : {}),
   })
   return { messageId: extractMessageId(data) }
 }
