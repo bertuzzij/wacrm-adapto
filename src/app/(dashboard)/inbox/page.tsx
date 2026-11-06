@@ -292,39 +292,20 @@ function InboxPageInner() {
         }
 
         // ---- Aviso de mensagem recebida -------------------------------
-        // Só para mensagem de cliente. O eco das nossas próprias mensagens
-        // também chega como INSERT (o webhook grava as enviadas), e avisar
-        // "nova mensagem" para algo que o próprio agente acabou de enviar
-        // seria ruído.
+        // O TOAST saiu daqui: ele agora vive em
+        // `src/adapto/notifications/new-message-alert.tsx`, montado no
+        // dashboard shell, para funcionar em qualquer página e não só na
+        // inbox. Manter os dois duplicaria o aviso.
         //
-        // Também não avisa quando a conversa já está aberta na tela: o
-        // agente está olhando para ela, o texto já apareceu no thread.
+        // O que fica aqui é só o título da aba com a contagem, que depende
+        // do estado desta tela (a conversa aberta) e por isso não faz
+        // sentido fora dela.
         const fromCustomer = newMsg.sender_type === "customer";
         const isOpenOnScreen =
           activeConversation?.id === newMsg.conversation_id;
         const isOtherConv = !isOpenOnScreen;
 
         if (fromCustomer && isOtherConv) {
-          // 1) Toast clicável: leva direto para a conversa.
-          const quem =
-            conversationsRef.current.find(
-              (c) => c.id === newMsg.conversation_id
-            )?.contact?.name ?? t("newMessageGenericSender");
-
-          toast(t("newMessageToast", { name: quem }), {
-            description: (newMsg.content_text ?? "").slice(0, 90),
-            action: {
-              label: t("newMessageOpen"),
-              onClick: () => {
-                router.push(`/inbox?c=${newMsg.conversation_id}`, {
-                  scroll: false,
-                });
-              },
-            },
-          });
-
-          // 2) Título da aba com a contagem, para quem está com o CRM em
-          //    outra aba do navegador.
           pendingUnreadRef.current += 1;
           document.title = `(${pendingUnreadRef.current}) ${baseTitleRef.current}`;
         }
