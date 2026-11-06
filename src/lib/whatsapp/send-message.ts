@@ -49,6 +49,40 @@ import {
   templateContentText,
   templateHeaderMediaUrl,
 } from '@/lib/whatsapp/template-body';
+import { applyGroupSignature } from '@/adapto/group-signature/signature';
+
+/** Nome do atendente, ou null quando não dá para saber. */
+async function loadSenderName(
+  db: SupabaseClient,
+  userId: string
+): Promise<string | null> {
+  const { data, error } = await db
+    .from('profiles')
+    .select('full_name')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const name = typeof data.full_name === 'string' ? data.full_name.trim() : '';
+  return name || null;
+}
+
+/**
+ * Texto que de fato vai para o WhatsApp.
+ *
+ * Em grupo, prefixa o nome do atendente: o protocolo não tem campo de
+ * autor, então o nome precisa viajar no próprio texto. Fora de grupo
+ * devolve o original, byte por byte.
+ */
+function outboundText(
+  text: string,
+  conversation: { kind?: string | null },
+  senderName: string | null
+): string {
+  if (conversation.kind !== 'group') return text;
+  return applyGroupSignature(text, { agentName: senderName });
+}
 
 export const MEDIA_KINDS = ['image', 'video', 'document', 'audio'] as const;
 export const VALID_MESSAGE_TYPES = [
@@ -186,8 +220,7 @@ export function validateSendMessageParams(params: {
   }
 }
 
-export async function sendMessageToConversation(
-  db: SupabaseClient,
+export async function sendMessageToConversation(  db: SupabaseClient,
   accountId: string,
   params: SendMessageParams
 ): Promise<SendMessageResult> {
@@ -237,6 +270,18 @@ export async function sendMessageToConversation(
   }
 
   const contact = conversation.contact;
+
+  // Nome de quem está enviando, para a assinatura de grupo. Lido só quando
+  // faz falta: em conversa individual o WhatsApp já mostra o número certo
+  // e um prefixo ali seria ruído.
+  //
+  // Uma leitura por envio é aceitável (um SELECT por PK), e o fallback é
+  // silencioso: se a query falhar, a mensagem sai sem assinatura em vez de
+  // não sair.
+  const senderName =
+    conversation.kind === 'group' && senderId
+      ? await loadSenderName(db, senderId)
+      : null;
 
   // A contact is addressable by phone number OR by business-scoped user
   // ID. Meta withholds the phone number for a customer who has adopted
@@ -403,7 +448,7 @@ export async function sendMessageToConversation(
       phoneNumberId: config.phone_number_id,
       accessToken,
       to: phone,
-      text: contentText!,
+      text: outboundText(contentText!, conversation, senderName),
       contextMessageId,
     });
     return result.messageId;
