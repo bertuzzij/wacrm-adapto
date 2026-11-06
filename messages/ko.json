@@ -3116,5 +3116,33 @@
     "description": "공유 받은편지함, 연락처, 파이프라인, 방송을 갖춘 WhatsApp CRM입니다.",
     "shortcutInbox": "받은편지함",
     "shortcutDashboard": "대시보드"
+  },
+  "Install": {
+    "nav": "앱 설치",
+    "title": "앱 설치",
+    "desc": "휴대폰 앱처럼 사용하세요: 홈 화면 아이콘, 주소 표시줄 없는 전체 화면, 새 메시지 알림.",
+    "installedTitle": "앱 설치됨",
+    "installedDesc": "설치된 앱으로 사용 중입니다. 준비 완료.",
+    "androidNative": "브라우저에서 바로 설치할 수 있습니다",
+    "androidNativeHint": "아래 버튼을 누르고 확인하세요.",
+    "installButton": "지금 설치",
+    "installing": "여는 중…",
+    "androidManualTitle": "Android 설치 방법",
+    "androidManualHint": "브라우저가 설치 버튼을 제공하지 않았습니다 — 메뉴를 사용하세요:",
+    "androidStep1": "Chrome 오른쪽 위의 ⋮ 메뉴를 누릅니다.",
+    "androidStep2": "\"앱 설치\"(또는 \"홈 화면에 추가\")를 선택합니다.",
+    "androidStep3": "\"설치\"를 눌러 확인합니다.",
+    "androidFallback": "없는 경우: HTTPS로 Chrome에서 사이트를 엽니다(WhatsApp 내 브라우저 제외).",
+    "iosTitle": "iPhone 또는 iPad 설치 방법",
+    "iosWhy": "Safari에는 설치 버튼이 없습니다. 공유를 통해 추가합니다:",
+    "iosStep1": "Safari 도구 모음에서 공유 버튼(위쪽 화살표가 있는 사각형)을 누릅니다.",
+    "iosStep2": "스크롤하여 \"홈 화면에 추가\"를 선택합니다.",
+    "iosStep3": "오른쪽 위의 \"추가\"를 누릅니다.",
+    "iosMustBeSafari": "반드시 Safari여야 합니다. iPhone의 Chrome과 Firefox는 설치할 수 없습니다 — 앱이 설치되지 않으면 알림도 작동하지 않습니다.",
+    "desktopTitle": "컴퓨터 설치 방법",
+    "desktopHint": "주소 표시줄 오른쪽의 설치 아이콘(화살표가 있는 화면)을 찾거나 브라우저 메뉴 → \"AdaptoConect 설치\"를 사용하세요.",
+    "iosNotifyBlocked": "iPhone 알림은 홈 화면에 앱을 설치한 경우에만 작동합니다. 먼저 설치한 후 알림을 켜세요.",
+    "dismiss": "나중에",
+    "dismissedHint": "설정 → 알림에서 나중에 설치할 수 있습니다."
   }
 }

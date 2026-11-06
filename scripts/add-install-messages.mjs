@@ -1,0 +1,133 @@
+// Acrescenta o namespace `Install` aos quatro dicionários.
+//
+// Roda uma vez, mas fica no repositório porque a mensagem de instalação
+// muda com frequência (o texto do menu muda entre versões do Chrome e do
+// Safari) e reescrever JSON à mão nos quatro idiomas convida a erro.
+//
+// Paridade é OBRIGATÓRIA: messages.test.ts falha se um idioma tiver uma
+// chave que outro não tem.
+import { readFileSync, writeFileSync } from 'node:fs';
+
+const TRANSLATIONS = {
+  pt: {
+    nav: 'Instalar aplicativo',
+    title: 'Instalar aplicativo',
+    desc: 'Use o AdaptoConect como um app no celular: ícone na tela inicial, tela cheia sem barra de endereço, e notificação de mensagem nova.',
+    installedTitle: 'Aplicativo instalado',
+    installedDesc: 'Você está usando o AdaptoConect como aplicativo. Tudo certo.',
+    androidNative: 'Seu navegador sabe instalar sozinho',
+    androidNativeHint: 'Toque no botão abaixo e confirme.',
+    installButton: 'Instalar agora',
+    installing: 'Abrindo…',
+    androidManualTitle: 'Como instalar no Android',
+    androidManualHint: 'O navegador não ofereceu o botão de instalar — use o menu:',
+    androidStep1: 'Toque no menu ⋮ no canto superior direito do Chrome.',
+    androidStep2: 'Escolha "Instalar aplicativo" (ou "Adicionar à tela inicial").',
+    androidStep3: 'Confirme em "Instalar".',
+    androidFallback: 'Se não aparecer: abra o site no Chrome (não no navegador do WhatsApp), conectado em HTTPS.',
+    iosTitle: 'Como instalar no iPhone ou iPad',
+    iosWhy: 'O Safari não tem botão de instalar. O caminho é pela opção Compartilhar:',
+    iosStep1: 'Toque no botão Compartilhar — o quadrado com a seta para cima, na barra do Safari.',
+    iosStep2: 'Role e escolha "Adicionar à Tela de Início".',
+    iosStep3: 'Toque em "Adicionar" no canto superior direito.',
+    iosMustBeSafari: 'Precisa ser no Safari. Chrome e Firefox no iPhone não conseguem instalar — e sem o app instalado, a notificação não funciona.',
+    desktopTitle: 'Como instalar no computador',
+    desktopHint: 'Procure o ícone de instalar (uma tela com uma seta) no lado direito da barra de endereço, ou use o menu do navegador → "Instalar AdaptoConect".',
+    iosNotifyBlocked: 'As notificações no iPhone só funcionam com o app instalado na Tela de Início. Instale primeiro e depois ative o aviso.',
+    dismiss: 'Agora não',
+    dismissedHint: 'Você pode instalar depois em Configurações → Notificações.',
+  },
+  en: {
+    nav: 'Install app',
+    title: 'Install app',
+    desc: 'Use the CRM like a phone app: home-screen icon, full screen with no address bar, and new-message notifications.',
+    installedTitle: 'App installed',
+    installedDesc: 'You are using the app as an installed application. All set.',
+    androidNative: 'Your browser can install it for you',
+    androidNativeHint: 'Tap the button below and confirm.',
+    installButton: 'Install now',
+    installing: 'Opening…',
+    androidManualTitle: 'How to install on Android',
+    androidManualHint: 'The browser did not offer the install button — use the menu:',
+    androidStep1: 'Tap the ⋮ menu in the top-right corner of Chrome.',
+    androidStep2: 'Choose "Install app" (or "Add to Home screen").',
+    androidStep3: 'Confirm by tapping "Install".',
+    androidFallback: 'If it is missing: open the site in Chrome (not the WhatsApp in-app browser), over HTTPS.',
+    iosTitle: 'How to install on iPhone or iPad',
+    iosWhy: 'Safari has no install button. The way in is through Share:',
+    iosStep1: 'Tap the Share button — the square with an arrow pointing up, in the Safari toolbar.',
+    iosStep2: 'Scroll and choose "Add to Home Screen".',
+    iosStep3: 'Tap "Add" in the top-right corner.',
+    iosMustBeSafari: 'It must be Safari. Chrome and Firefox on iPhone cannot install — and without the installed app, notifications do not work.',
+    desktopTitle: 'How to install on your computer',
+    desktopHint: 'Look for the install icon (a screen with an arrow) at the right end of the address bar, or use the browser menu → "Install AdaptoConect".',
+    iosNotifyBlocked: 'Notifications on iPhone only work with the app installed to the Home Screen. Install it first, then turn on alerts.',
+    dismiss: 'Not now',
+    dismissedHint: 'You can install later in Settings → Notifications.',
+  },
+  es: {
+    nav: 'Instalar aplicación',
+    title: 'Instalar aplicación',
+    desc: 'Usa el CRM como una app en el móvil: icono en la pantalla de inicio, pantalla completa sin barra de direcciones, y notificaciones de mensajes nuevos.',
+    installedTitle: 'Aplicación instalada',
+    installedDesc: 'Estás usando la aplicación instalada. Todo listo.',
+    androidNative: 'Tu navegador puede instalarla',
+    androidNativeHint: 'Toca el botón y confirma.',
+    installButton: 'Instalar ahora',
+    installing: 'Abriendo…',
+    androidManualTitle: 'Cómo instalar en Android',
+    androidManualHint: 'El navegador no ofreció el botón de instalar — usa el menú:',
+    androidStep1: 'Toca el menú ⋮ en la esquina superior derecha de Chrome.',
+    androidStep2: 'Elige "Instalar aplicación" (o "Añadir a pantalla de inicio").',
+    androidStep3: 'Confirma en "Instalar".',
+    androidFallback: 'Si no aparece: abre el sitio en Chrome (no en el navegador de WhatsApp), con HTTPS.',
+    iosTitle: 'Cómo instalar en iPhone o iPad',
+    iosWhy: 'Safari no tiene botón de instalar. El camino es por Compartir:',
+    iosStep1: 'Toca el botón Compartir — el cuadrado con la flecha hacia arriba, en la barra de Safari.',
+    iosStep2: 'Desplázate y elige "Añadir a pantalla de inicio".',
+    iosStep3: 'Toca "Añadir" en la esquina superior derecha.',
+    iosMustBeSafari: 'Tiene que ser Safari. Chrome y Firefox en iPhone no pueden instalar — y sin la app instalada, las notificaciones no funcionan.',
+    desktopTitle: 'Cómo instalar en tu computadora',
+    desktopHint: 'Busca el icono de instalar (una pantalla con una flecha) a la derecha de la barra de direcciones, o usa el menú del navegador → "Instalar AdaptoConect".',
+    iosNotifyBlocked: 'Las notificaciones en iPhone solo funcionan con la app instalada en la pantalla de inicio. Instálala primero y luego activa los avisos.',
+    dismiss: 'Ahora no',
+    dismissedHint: 'Puedes instalar más tarde en Configuración → Notificaciones.',
+  },
+  ko: {
+    nav: '앱 설치',
+    title: '앱 설치',
+    desc: '휴대폰 앱처럼 사용하세요: 홈 화면 아이콘, 주소 표시줄 없는 전체 화면, 새 메시지 알림.',
+    installedTitle: '앱 설치됨',
+    installedDesc: '설치된 앱으로 사용 중입니다. 준비 완료.',
+    androidNative: '브라우저에서 바로 설치할 수 있습니다',
+    androidNativeHint: '아래 버튼을 누르고 확인하세요.',
+    installButton: '지금 설치',
+    installing: '여는 중…',
+    androidManualTitle: 'Android 설치 방법',
+    androidManualHint: '브라우저가 설치 버튼을 제공하지 않았습니다 — 메뉴를 사용하세요:',
+    androidStep1: 'Chrome 오른쪽 위의 ⋮ 메뉴를 누릅니다.',
+    androidStep2: '"앱 설치"(또는 "홈 화면에 추가")를 선택합니다.',
+    androidStep3: '"설치"를 눌러 확인합니다.',
+    androidFallback: '없는 경우: HTTPS로 Chrome에서 사이트를 엽니다(WhatsApp 내 브라우저 제외).',
+    iosTitle: 'iPhone 또는 iPad 설치 방법',
+    iosWhy: 'Safari에는 설치 버튼이 없습니다. 공유를 통해 추가합니다:',
+    iosStep1: 'Safari 도구 모음에서 공유 버튼(위쪽 화살표가 있는 사각형)을 누릅니다.',
+    iosStep2: '스크롤하여 "홈 화면에 추가"를 선택합니다.',
+    iosStep3: '오른쪽 위의 "추가"를 누릅니다.',
+    iosMustBeSafari: '반드시 Safari여야 합니다. iPhone의 Chrome과 Firefox는 설치할 수 없습니다 — 앱이 설치되지 않으면 알림도 작동하지 않습니다.',
+    desktopTitle: '컴퓨터 설치 방법',
+    desktopHint: '주소 표시줄 오른쪽의 설치 아이콘(화살표가 있는 화면)을 찾거나 브라우저 메뉴 → "AdaptoConect 설치"를 사용하세요.',
+    iosNotifyBlocked: 'iPhone 알림은 홈 화면에 앱을 설치한 경우에만 작동합니다. 먼저 설치한 후 알림을 켜세요.',
+    dismiss: '나중에',
+    dismissedHint: '설정 → 알림에서 나중에 설치할 수 있습니다.',
+  },
+};
+
+for (const locale of Object.keys(TRANSLATIONS)) {
+  const path = new URL(`../messages/${locale}.json`, import.meta.url);
+  const catalogue = JSON.parse(readFileSync(path, 'utf8'));
+  catalogue.Install = TRANSLATIONS[locale];
+  // 2 espaços + newline final: o formato que os dicionários já usam.
+  writeFileSync(path, `${JSON.stringify(catalogue, null, 2)}\n`, 'utf8');
+  console.log(`${locale}: Install escrito (${Object.keys(TRANSLATIONS[locale]).length} chaves)`);
+}

@@ -3116,5 +3116,33 @@
     "description": "WhatsApp CRM with a shared inbox, contacts, pipelines and broadcasts.",
     "shortcutInbox": "Inbox",
     "shortcutDashboard": "Dashboard"
+  },
+  "Install": {
+    "nav": "Install app",
+    "title": "Install app",
+    "desc": "Use the CRM like a phone app: home-screen icon, full screen with no address bar, and new-message notifications.",
+    "installedTitle": "App installed",
+    "installedDesc": "You are using the app as an installed application. All set.",
+    "androidNative": "Your browser can install it for you",
+    "androidNativeHint": "Tap the button below and confirm.",
+    "installButton": "Install now",
+    "installing": "Opening…",
+    "androidManualTitle": "How to install on Android",
+    "androidManualHint": "The browser did not offer the install button — use the menu:",
+    "androidStep1": "Tap the ⋮ menu in the top-right corner of Chrome.",
+    "androidStep2": "Choose \"Install app\" (or \"Add to Home screen\").",
+    "androidStep3": "Confirm by tapping \"Install\".",
+    "androidFallback": "If it is missing: open the site in Chrome (not the WhatsApp in-app browser), over HTTPS.",
+    "iosTitle": "How to install on iPhone or iPad",
+    "iosWhy": "Safari has no install button. The way in is through Share:",
+    "iosStep1": "Tap the Share button — the square with an arrow pointing up, in the Safari toolbar.",
+    "iosStep2": "Scroll and choose \"Add to Home Screen\".",
+    "iosStep3": "Tap \"Add\" in the top-right corner.",
+    "iosMustBeSafari": "It must be Safari. Chrome and Firefox on iPhone cannot install — and without the installed app, notifications do not work.",
+    "desktopTitle": "How to install on your computer",
+    "desktopHint": "Look for the install icon (a screen with an arrow) at the right end of the address bar, or use the browser menu → \"Install AdaptoConect\".",
+    "iosNotifyBlocked": "Notifications on iPhone only work with the app installed to the Home Screen. Install it first, then turn on alerts.",
+    "dismiss": "Not now",
+    "dismissedHint": "You can install later in Settings → Notifications."
   }
 }

@@ -24,6 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { SettingsPanelHead } from '@/components/settings/settings-panel-head';
 import { BrowserNotificationsCard } from '@/components/settings/browser-notifications-card';
+import { InstallAppCard } from '@/adapto/pwa/install-card';
 import {
   playNotificationSound,
   readSoundPref,
@@ -55,6 +56,13 @@ export function NotificationsPanel() {
   return (
     <section className="max-w-2xl animate-in fade-in-50 space-y-6 duration-200">
       <SettingsPanelHead title={t('title')} description={t('description')} />
+
+      {/* Instalação vem ANTES da notificação, e a ordem é de propósito.
+          No iPhone a notificação só existe com o app na Tela de Início: quem
+          cai aqui procurando "avisar de mensagem nova" precisa primeiro
+          descobrir que tem de instalar. Colocar o card de notificação
+          primeiro levaria a uma tela dizendo "não suportado" sem saída. */}
+      <InstallAppCard />
 
       {/* Notificação do navegador: componente já existente, reaproveitado
           para não duplicar a lógica de permissão. */}

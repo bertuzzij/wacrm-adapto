@@ -3116,5 +3116,33 @@
     "description": "CRM de WhatsApp com caixa de entrada compartilhada, contatos, pipelines e disparos.",
     "shortcutInbox": "Caixa de entrada",
     "shortcutDashboard": "Painel"
+  },
+  "Install": {
+    "nav": "Instalar aplicativo",
+    "title": "Instalar aplicativo",
+    "desc": "Use o AdaptoConect como um app no celular: ícone na tela inicial, tela cheia sem barra de endereço, e notificação de mensagem nova.",
+    "installedTitle": "Aplicativo instalado",
+    "installedDesc": "Você está usando o AdaptoConect como aplicativo. Tudo certo.",
+    "androidNative": "Seu navegador sabe instalar sozinho",
+    "androidNativeHint": "Toque no botão abaixo e confirme.",
+    "installButton": "Instalar agora",
+    "installing": "Abrindo…",
+    "androidManualTitle": "Como instalar no Android",
+    "androidManualHint": "O navegador não ofereceu o botão de instalar — use o menu:",
+    "androidStep1": "Toque no menu ⋮ no canto superior direito do Chrome.",
+    "androidStep2": "Escolha \"Instalar aplicativo\" (ou \"Adicionar à tela inicial\").",
+    "androidStep3": "Confirme em \"Instalar\".",
+    "androidFallback": "Se não aparecer: abra o site no Chrome (não no navegador do WhatsApp), conectado em HTTPS.",
+    "iosTitle": "Como instalar no iPhone ou iPad",
+    "iosWhy": "O Safari não tem botão de instalar. O caminho é pela opção Compartilhar:",
+    "iosStep1": "Toque no botão Compartilhar — o quadrado com a seta para cima, na barra do Safari.",
+    "iosStep2": "Role e escolha \"Adicionar à Tela de Início\".",
+    "iosStep3": "Toque em \"Adicionar\" no canto superior direito.",
+    "iosMustBeSafari": "Precisa ser no Safari. Chrome e Firefox no iPhone não conseguem instalar — e sem o app instalado, a notificação não funciona.",
+    "desktopTitle": "Como instalar no computador",
+    "desktopHint": "Procure o ícone de instalar (uma tela com uma seta) no lado direito da barra de endereço, ou use o menu do navegador → \"Instalar AdaptoConect\".",
+    "iosNotifyBlocked": "As notificações no iPhone só funcionam com o app instalado na Tela de Início. Instale primeiro e depois ative o aviso.",
+    "dismiss": "Agora não",
+    "dismissedHint": "Você pode instalar depois em Configurações → Notificações."
   }
 }

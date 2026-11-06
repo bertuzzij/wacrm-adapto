@@ -3116,5 +3116,33 @@
     "description": "CRM de WhatsApp con bandeja de entrada compartida, contactos, embudos y envíos.",
     "shortcutInbox": "Bandeja de entrada",
     "shortcutDashboard": "Panel"
+  },
+  "Install": {
+    "nav": "Instalar aplicación",
+    "title": "Instalar aplicación",
+    "desc": "Usa el CRM como una app en el móvil: icono en la pantalla de inicio, pantalla completa sin barra de direcciones, y notificaciones de mensajes nuevos.",
+    "installedTitle": "Aplicación instalada",
+    "installedDesc": "Estás usando la aplicación instalada. Todo listo.",
+    "androidNative": "Tu navegador puede instalarla",
+    "androidNativeHint": "Toca el botón y confirma.",
+    "installButton": "Instalar ahora",
+    "installing": "Abriendo…",
+    "androidManualTitle": "Cómo instalar en Android",
+    "androidManualHint": "El navegador no ofreció el botón de instalar — usa el menú:",
+    "androidStep1": "Toca el menú ⋮ en la esquina superior derecha de Chrome.",
+    "androidStep2": "Elige \"Instalar aplicación\" (o \"Añadir a pantalla de inicio\").",
+    "androidStep3": "Confirma en \"Instalar\".",
+    "androidFallback": "Si no aparece: abre el sitio en Chrome (no en el navegador de WhatsApp), con HTTPS.",
+    "iosTitle": "Cómo instalar en iPhone o iPad",
+    "iosWhy": "Safari no tiene botón de instalar. El camino es por Compartir:",
+    "iosStep1": "Toca el botón Compartir — el cuadrado con la flecha hacia arriba, en la barra de Safari.",
+    "iosStep2": "Desplázate y elige \"Añadir a pantalla de inicio\".",
+    "iosStep3": "Toca \"Añadir\" en la esquina superior derecha.",
+    "iosMustBeSafari": "Tiene que ser Safari. Chrome y Firefox en iPhone no pueden instalar — y sin la app instalada, las notificaciones no funcionan.",
+    "desktopTitle": "Cómo instalar en tu computadora",
+    "desktopHint": "Busca el icono de instalar (una pantalla con una flecha) a la derecha de la barra de direcciones, o usa el menú del navegador → \"Instalar AdaptoConect\".",
+    "iosNotifyBlocked": "Las notificaciones en iPhone solo funcionan con la app instalada en la pantalla de inicio. Instálala primero y luego activa los avisos.",
+    "dismiss": "Ahora no",
+    "dismissedHint": "Puedes instalar más tarde en Configuración → Notificaciones."
   }
 }

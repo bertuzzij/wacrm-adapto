@@ -16,6 +16,8 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { useBrowserNotifyPref } from '@/hooks/use-browser-notifications';
 import { showDeviceNotification } from '@/adapto/pwa/notify';
+import { useInstallPrompt } from '@/adapto/pwa/use-install-prompt';
+import { needsInstallForNotifications } from '@/adapto/pwa/install';
 import {
   BROWSER_NOTIFY_CHANGE_EVENT,
   getNotificationPermission,
@@ -48,6 +50,8 @@ const serverPermission = (): BrowserNotifyPermission => 'unsupported';
  */
 export function BrowserNotificationsCard({ className }: { className?: string }) {
   const t = useTranslations('Settings.browserNotifications');
+  const installT = useTranslations('Install');
+  const { platform, installed } = useInstallPrompt();
   const enabled = useBrowserNotifyPref();
   const permission = useSyncExternalStore(
     subscribePermission,
@@ -58,6 +62,10 @@ export function BrowserNotificationsCard({ className }: { className?: string }) 
 
   const supported = permission !== 'unsupported';
   const checked = enabled && permission === 'granted';
+  // No iPhone dentro do Safari, `Notification` é indefinido — mas isso não
+  // é limitação do navegador, é exigência de instalação. A UI precisa
+  // diferenciar os dois casos.
+  const iosNeedsInstall = needsInstallForNotifications(platform, installed);
 
   const onToggle = async (next: boolean) => {
     if (!next) {
@@ -115,7 +123,17 @@ export function BrowserNotificationsCard({ className }: { className?: string }) 
         <CardDescription>{t('description')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!supported ? (
+        {!supported && iosNeedsInstall ? (
+          /* iOS dentro do Safari: não é falta de suporte do navegador — é
+             que o WebKit só entrega Web Push para app na Tela de Início
+             (iOS 16.4+). Dizer "este navegador não oferece suporte" aqui
+             faz o usuário concluir que o produto está quebrado, quando o
+             que falta é instalar. */
+          <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+            <CircleAlert className="mt-0.5 size-3.5 shrink-0" />
+            <span>{installT('iosNotifyBlocked')}</span>
+          </div>
+        ) : !supported ? (
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <CircleAlert className="size-4 shrink-0" />
             {t('unsupported')}

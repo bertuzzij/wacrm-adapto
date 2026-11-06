@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ModeToggle } from "@/components/layout/mode-toggle";
 import { UnreadBell } from "@/adapto/inbox/unread-bell";
+import { InstallAppButton } from "@/adapto/pwa/install-button";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "dashboard",
@@ -86,6 +87,12 @@ export function Header({ onOpenSidebar }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-1 sm:gap-2">
+        {/* Instalar o app. Fica no header porque o usuário de celular não
+            entra em Configurações para descobrir que dá para instalar — e
+            no iPhone este botão é o único aviso de que o app existe. Some
+            sozinho quando já está instalado. */}
+        <InstallAppButton />
+
         {/* Sino de avisos. Fica antes do toggle de tema para não
             deslocar os controles que o usuário já conhece — e porque
             mensagem esperando resposta importa mais que o tema. */}
