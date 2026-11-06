@@ -20,6 +20,8 @@ export interface GroupMember {
   phone: string;
   /** Nome conhecido, ou '' quando o WAHA não sabe. */
   name: string;
+  /** URL da foto de perfil, ou null. Já copiada para o nosso Storage. */
+  avatarUrl: string | null;
   /** Administrador do grupo. */
   isAdmin: boolean;
 }
@@ -31,6 +33,14 @@ interface WahaParticipant {
   LID?: string;
   IsAdmin?: boolean;
   IsSuperAdmin?: boolean;
+  /**
+   * Nome do participante — quase sempre VAZIO.
+   *
+   * Verificado contra a API real: o endpoint de grupos devolve
+   * `DisplayName: ""` para todos os membros. O nome de verdade está no
+   * endpoint de contatos, consultado por telefone. Este campo fica como
+   * atalho para quando o WAHA passar a preenchê-lo.
+   */
   DisplayName?: string;
 }
 
@@ -57,7 +67,15 @@ export function memberPhone(participant: WahaParticipant): string {
 
 /** Converte a resposta do endpoint de grupos em membros utilizáveis. */
 export function toGroupMembers(
-  participants: WahaParticipant[] | null | undefined
+  participants: WahaParticipant[] | null | undefined,
+  /**
+   * Nome e foto por telefone, resolvidos pelo servidor.
+   *
+   * Vem de fora porque exige rede: o endpoint de grupos não traz o nome
+   * (`DisplayName` chega vazio) e a foto é outra chamada. Quem chama isto
+   * já buscou esses dados; aqui só cruzamos com os participantes.
+   */
+  resolved?: Map<string, { name?: string | null; avatarUrl?: string | null }>
 ): GroupMember[] {
   const out: GroupMember[] = [];
   const seen = new Set<string>();
@@ -69,9 +87,13 @@ export function toGroupMembers(
     if (!phone || seen.has(phone)) continue;
     seen.add(phone);
 
+    const extra = resolved?.get(phone);
+
     out.push({
       phone,
-      name: (p.DisplayName ?? '').trim(),
+      // Prioridade: nome resolvido > DisplayName (quando vier) > vazio.
+      name: (extra?.name ?? p.DisplayName ?? '').trim(),
+      avatarUrl: extra?.avatarUrl ?? null,
       isAdmin: p.IsAdmin === true || p.IsSuperAdmin === true,
     });
   }

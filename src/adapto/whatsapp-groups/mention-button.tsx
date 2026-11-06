@@ -142,8 +142,22 @@ export function MentionButton({
                   onClick={() => handlePick(m.phone)}
                   className="flex w-full items-start gap-2 px-3 py-2 text-left transition-colors hover:bg-muted"
                 >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-foreground">
-                    {(m.name || m.phone).charAt(0).toUpperCase()}
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-[10px] font-medium text-foreground">
+                    {m.avatarUrl ? (
+                      <img
+                        src={m.avatarUrl}
+                        alt=""
+                        // A foto vem de `pps.whatsapp.net` e expira em ~2
+                        // dias; falha aqui cai nas iniciais em vez de
+                        // deixar um quadrado quebrado na lista.
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                        className="h-7 w-7 rounded-full object-cover"
+                      />
+                    ) : (
+                      (m.name || m.phone).charAt(0).toUpperCase()
+                    )}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-xs font-medium text-foreground">

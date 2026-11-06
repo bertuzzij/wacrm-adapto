@@ -86,6 +86,65 @@ describe('toGroupMembers', () => {
   });
 });
 
+describe('toGroupMembers com nome e foto resolvidos', () => {
+  const participants = [
+    { JID: '1@lid', PhoneNumber: '5511000000001@s.whatsapp.net', DisplayName: '' },
+    { JID: '2@lid', PhoneNumber: '5511000000002@s.whatsapp.net', DisplayName: '' },
+  ];
+
+  it('usa o nome resolvido quando DisplayName vem vazio', () => {
+    // O endpoint de grupos devolve DisplayName vazio para todos; o nome
+    // real vem do endpoint de contatos. Este é o caso normal, não a exceção.
+    const resolved = new Map([
+      ['5511000000001', { name: 'Atendente A', avatarUrl: null }],
+    ]);
+    const members = toGroupMembers(participants, resolved);
+
+    expect(members.find((m) => m.phone === '5511000000001')?.name).toBe('Atendente A');
+  });
+
+  it('leva a foto resolvida para o membro', () => {
+    const resolved = new Map([
+      ['5511000000001', { name: 'Atendente A', avatarUrl: 'https://pps.whatsapp.net/x.jpg' }],
+    ]);
+    const members = toGroupMembers(participants, resolved);
+
+    expect(members.find((m) => m.phone === '5511000000001')?.avatarUrl).toBe(
+      'https://pps.whatsapp.net/x.jpg'
+    );
+  });
+
+  it('deixa avatarUrl null quando o contato não tem foto', () => {
+    const members = toGroupMembers(participants, new Map());
+    expect(members.every((m) => m.avatarUrl === null)).toBe(true);
+  });
+
+  it('prefere o nome resolvido sobre DisplayName', () => {
+    const resolved = new Map([['5511000000001', { name: 'Do contato' }]]);
+    const members = toGroupMembers(
+      [{ JID: '1@lid', PhoneNumber: '5511000000001@s.whatsapp.net', DisplayName: 'Do grupo' }],
+      resolved
+    );
+    expect(members[0].name).toBe('Do contato');
+  });
+
+  it('cai para DisplayName quando não há resolução', () => {
+    const members = toGroupMembers([
+      { JID: '1@lid', PhoneNumber: '5511000000001@s.whatsapp.net', DisplayName: 'Do grupo' },
+    ]);
+    expect(members[0].name).toBe('Do grupo');
+  });
+
+  it('ordena por nome resolvido, não por telefone', () => {
+    const resolved = new Map([
+      ['5511000000001', { name: 'Zulu' }],
+      ['5511000000002', { name: 'Alfa' }],
+    ]);
+    const members = toGroupMembers(participants, resolved);
+    expect(members.map((m) => m.name)).toEqual(['Alfa', 'Zulu']);
+  });
+});
+
 describe('mentionToken e mentionJid', () => {
   it('monta o marcador de texto e o JID', () => {
     expect(mentionToken('5511000000002')).toBe('@5511000000002');
@@ -95,8 +154,8 @@ describe('mentionToken e mentionJid', () => {
 
 describe('mentionedPhones', () => {
   const members = [
-    { phone: '5511000000002', name: 'Atendente C', isAdmin: false },
-    { phone: '5511000000003', name: 'Atendente B', isAdmin: false },
+    { phone: '5511000000002', name: 'Atendente C', avatarUrl: null, isAdmin: false },
+    { phone: '5511000000003', name: 'Atendente B', avatarUrl: null, isAdmin: false },
   ];
 
   it('encontra a menção presente no texto', () => {

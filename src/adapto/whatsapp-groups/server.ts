@@ -20,7 +20,7 @@
 // ============================================================
 
 import { wahaBaseUrl, wahaSession } from '@/lib/whatsapp/waha';
-import { toGroupMembers, type GroupMember } from './members';
+import { memberPhone, toGroupMembers, type GroupMember } from './members';
 
 /** Quanto tempo um nome de grupo fica em cache. */
 const GROUP_NAME_TTL_MS = 10 * 60 * 1000;
@@ -36,11 +36,21 @@ export function clearGroupNameCache(): void {
 }
 
 /**
- * Membros do grupo, com nome e telefone.
+ * Membros do grupo, com nome e foto.
  *
- * Sem cache: a lista muda quando alguém entra ou sai, e uma menção a quem
- * já saiu falharia. A chamada é sob demanda (o atendente abriu o seletor de
- * menção), não a cada mensagem — o custo é aceitável.
+ * O endpoint de grupos NÃO traz o nome (`DisplayName` vem vazio para todos
+ * os participantes — verificado contra a API real). O nome está no endpoint
+ * de contatos, consultado por telefone. A foto exige uma terceira chamada.
+ *
+ * Resolver tudo em paralelo por membro é deliberado: um grupo de 6 pessoas
+ * faz 12 chamadas curtas em vez de 12 em série. Com `Promise.allSettled`,
+ * uma falha isolada deixa aquele membro sem nome/foto, sem derrubar a lista
+ * inteira — que é o que importa quando o atendente está esperando para
+ * mencionar alguém.
+ *
+ * A foto é devolvida como URL do WhatsApp, não copiada: aqui a lista é
+ * efêmera (dura o tempo do seletor aberto), diferente do avatar de contato
+ * que fica salvo e por isso é copiado para o Storage.
  */
 export async function fetchGroupMembers(
   groupId: string
@@ -53,9 +63,68 @@ export async function fetchGroupMembers(
     const res = await fetch(url, { headers: headers(), signal: controller.signal });
     if (!res.ok) return [];
     const data = (await res.json()) as WahaGroupInfo;
-    return toGroupMembers(data?.Participants);
+
+    // Participantes sem telefone mencionável já saem fora aqui, para não
+    // gastarmos duas chamadas com quem não vai aparecer na lista.
+    const phones = (data?.Participants ?? [])
+      .map(memberPhone)
+      .filter((p, i, arr) => p && arr.indexOf(p) === i);
+
+    const resolved = new Map<
+      string,
+      { name: string | null; avatarUrl: string | null }
+    >();
+
+    await Promise.all(
+      phones.map(async (phone) => {
+        const [name, picture] = await Promise.all([
+          fetchContactName(`${phone}@c.us`).catch(() => null),
+          fetchChatPictureUrl(`${phone}@c.us`).catch(() => null),
+        ]);
+        resolved.set(phone, { name, avatarUrl: picture });
+      })
+    );
+
+    return toGroupMembers(data?.Participants, resolved);
   } catch {
     return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Nome do contato pelo endpoint de contatos (`name` da agenda, depois `pushname`). */
+async function fetchContactName(chatId: string): Promise<string | null> {
+  const url = `${wahaBaseUrl()}/api/contacts?session=${encodeURIComponent(wahaSession())}&contactId=${encodeURIComponent(chatId)}`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { headers: headers(), signal: controller.signal });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { name?: string; pushname?: string };
+    const picked = (data?.name ?? data?.pushname ?? '').trim();
+    return picked || null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** URL da foto de perfil, ou null quando o contato não tem. */
+async function fetchChatPictureUrl(chatId: string): Promise<string | null> {
+  const url = `${wahaBaseUrl()}/api/${encodeURIComponent(wahaSession())}/chats/${encodeURIComponent(chatId)}/picture`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { headers: headers(), signal: controller.signal });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { url?: string };
+    return data?.url?.trim() || null;
+  } catch {
+    return null;
   } finally {
     clearTimeout(timer);
   }
