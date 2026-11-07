@@ -15,7 +15,7 @@
 // O padrão é expandido: quem nunca mexeu vê o menu como sempre foi.
 // ============================================================
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 
 /** Chave do localStorage. Versionada para permitir mudar o formato depois. */
 const STORAGE_KEY = 'adapto.sidebar.collapsed.v1';
@@ -50,30 +50,58 @@ export function writeCollapsedPreference(collapsed: boolean): void {
   }
 }
 
+// ------------------------------------------------------------
+// Assinatura para o useSyncExternalStore.
+//
+// Por que não `useState` + `useEffect`: a regra
+// `react-hooks/set-state-in-effect` (eslint-plugin-react-hooks v7) trata
+// `setState` síncrono dentro de efeito como erro, e com razão — ele
+// dispara um segundo render em cascata logo após a pintura.
+//
+// `useSyncExternalStore` é o primitivo que o React oferece exatamente para
+// ler uma fonte externa (localStorage) sem divergir na hidratação: ele
+// recebe um `getServerSnapshot` separado, então o servidor renderiza
+// `false` e o cliente reconcilia sozinho.
+// ------------------------------------------------------------
+
+/** Ouvintes avisados quando a preferência muda (inclui outras abas). */
+const listeners = new Set<() => void>();
+
+function subscribe(onChange: () => void): () => void {
+  listeners.add(onChange);
+  // `storage` só dispara em OUTRAS abas; para a mesma aba avisamos em
+  // `notify()`, chamado pela escrita.
+  window.addEventListener('storage', onChange);
+  return () => {
+    listeners.delete(onChange);
+    window.removeEventListener('storage', onChange);
+  };
+}
+
+function notify(): void {
+  for (const listener of listeners) listener();
+}
+
 /**
- * Hook do estado de colapso.
+ * Estado do colapso do menu lateral.
  *
- * Começa sempre `false` para o primeiro render do servidor e do cliente
- * coincidirem — ler o `localStorage` no `useState` inicial faria o HTML
- * do servidor divergir do primeiro render do cliente (erro de hidratação).
- * A preferência real é aplicada no efeito, logo depois.
+ * O servidor sempre renderiza expandido; o cliente aplica a preferência
+ * salva na primeira leitura, sem render extra e sem erro de hidratação.
  */
 export function useSidebarCollapsed(): {
   collapsed: boolean;
   toggle: () => void;
 } {
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    setCollapsed(readCollapsedPreference());
-  }, []);
+  const collapsed = useSyncExternalStore(
+    subscribe,
+    readCollapsedPreference,
+    // Snapshot do servidor: o layout foi desenhado para o menu expandido.
+    () => false
+  );
 
   const toggle = useCallback(() => {
-    setCollapsed((previous) => {
-      const next = !previous;
-      writeCollapsedPreference(next);
-      return next;
-    });
+    writeCollapsedPreference(!readCollapsedPreference());
+    notify();
   }, []);
 
   return { collapsed, toggle };

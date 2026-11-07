@@ -47,9 +47,19 @@ export function NewMessageAlert() {
   const seenRef = useRef<Map<string, number>>(new Map());
   // Evita um burst ao voltar de uma desconexão longa: só avisa de mensagem
   // realmente recente (o atraso máximo tolerado é este).
-  const mountedAtRef = useRef<number>(Date.now());
+  //
+  // Inicializado com `null` e preenchido no efeito: `useRef(Date.now())`
+  // avalia o argumento a CADA render (é só um valor inicial, não uma
+  // fábrica), o que a regra `react-hooks/purity` do
+  // eslint-plugin-react-hooks v7 acusa como função impura durante o
+  // render. `Date.now()` é impuro por definição — muda sem o React saber.
+  const mountedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // Marca o instante real do mount. É aqui, e não no render, que ler o
+    // relógio faz sentido.
+    const mountedAt = Date.now();
+    mountedAtRef.current ??= mountedAt;
     const supabase = createClient();
     let cancelled = false;
 
@@ -75,7 +85,8 @@ export function NewMessageAlert() {
           // Realtime pode entregar eventos atrasados, e uma enxurrada de
           // toasts de mensagens lidas horas atrás é pior que nenhum.
           const createdAt = new Date(msg.created_at).getTime();
-          if (Number.isFinite(createdAt) && createdAt < mountedAtRef.current - 60_000) {
+          const mountedAt = mountedAtRef.current ?? Date.now();
+          if (Number.isFinite(createdAt) && createdAt < mountedAt - 60_000) {
             return;
           }
 

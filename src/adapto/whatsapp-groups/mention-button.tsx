@@ -43,10 +43,16 @@ export function MentionButton({
 
   // Busca ao abrir, não no mount: a maioria das mensagens não menciona
   // ninguém, e uma chamada por conversa aberta seria desperdício.
+  //
+  // `setLoading(true)` NÃO fica aqui: a regra `react-hooks/set-state-in-effect`
+  // (eslint-plugin-react-hooks v7) acusa setState síncrono no corpo do efeito
+  // porque ele provoca um render em cascata imediatamente após a pintura.
+  // Ele foi movido para o clique que abre o painel — que é onde a intenção
+  // do usuário nasce, e uma atualização de estado em handler de evento é
+  // exatamente o lugar certo para isso.
   useEffect(() => {
     if (!open || members.length > 0) return;
     let cancelled = false;
-    setLoading(true);
     fetch(`/api/adapto/conversations/${conversationId}/members`)
       .then((r) => (r.ok ? r.json() : { members: [] }))
       .then((data: { members?: GroupMember[] }) => {
@@ -62,6 +68,15 @@ export function MentionButton({
       cancelled = true;
     };
   }, [open, conversationId, members.length]);
+
+  /** Abre/fecha o painel; marca o carregamento no clique, não no efeito. */
+  const toggleOpen = () => {
+    const willOpen = !open;
+    setOpen(willOpen);
+    // Só ao abrir, e só se ainda não temos a lista em mãos. Fora do
+    // updater de `setOpen` de propósito: o updater precisa ser puro.
+    if (willOpen && members.length === 0) setLoading(true);
+  };
 
   // Fecha ao clicar fora e no Escape, como o seletor de emoji.
   useEffect(() => {
@@ -99,7 +114,7 @@ export function MentionButton({
     <div ref={wrapperRef} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggleOpen}
         disabled={disabled}
         aria-label={t('open')}
         aria-expanded={open}
