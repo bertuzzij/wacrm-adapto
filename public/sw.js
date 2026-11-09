@@ -182,10 +182,45 @@ self.addEventListener("push", (event) => {
 });
 
 /**
- * Clique na notificação: foca uma janela já aberta do app em vez de abrir
- * outra. Empilhar instâncias do CRM é o comportamento errado — o usuário
- * acaba com três PWAs abertos e não sabe qual tem a conversa.
+ * Web Push: o aviso que chega com o app FECHADO.
+ *
+ * O payload é montado no servidor (src/adapto/push/payload.ts) e assinado
+ * com VAPID. Este handler só exibe.
+ *
+ * `renotify` + `tag` juntos são obrigatórios num chat: sem `renotify`, a
+ * segunda mensagem do mesmo cliente SUBSTITUI o aviso anterior em silêncio e
+ * o usuário não é alertado de que chegou algo novo. Com `tag` sozinho o
+ * agrupamento funciona, mas a substituição é muda. Com os dois, ele agrupa
+ * por conversa E vibra de novo.
  */
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    // Payload não-JSON (ou vazio) ainda precisa produzir um aviso: o
+    // navegador revoga a inscrição se o push não resultar em notificação
+    // visível (`userVisibleOnly: true`).
+    payload = {};
+  }
+
+  const title = payload.title || "AdaptoConect";
+  const options = {
+    body: payload.body || "Voce tem uma nova mensagem.",
+    icon: payload.icon || "/icons/icon-192.png",
+    // `badge` é monocromático no Android — o ícone colorido vira um
+    // quadrado branco na barra de status.
+    badge: "/icons/badge-96.png",
+    // `tag` agrupa por conversa; `renotify` garante que a substituição
+    // ainda alerte em vez de trocar o texto em silêncio.
+    tag: payload.tag || "adaptoconect-message",
+    renotify: true,
+    data: { url: payload.url || "/inbox" },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 

@@ -1,18 +1,26 @@
 import { ImageResponse } from "next/og";
 
-// Replaces the default Next.js favicon with the brand mark — Hostinger
-// violet rounded square + white chat-square glyph — matching the
-// sidebar logo in `src/components/layout/sidebar.tsx`. Next.js renders
-// this at build time and auto-injects <link rel="icon"> into <head>.
+// Favicon gerado em build time — o Next injeta `<link rel="icon" href="/icon">`.
 //
-// This route takes precedence over src/app/favicon.ico, which is the
-// Next.js default and can stay on disk harmlessly (or be removed).
+// ATENÇÃO: este arquivo tem PRECEDÊNCIA sobre um eventual `icon.png` no mesmo
+// diretório (verificado: o Next emite `/icon` e ignora o PNG). Por isso a arte
+// aqui e a de `scripts/generate-pwa-icons.mjs` precisam concordar — são o
+// mesmo desenho em dois motores de render distintos. O `glyph-consistency`
+// em icons.test.ts falha se as proporções divergirem.
+//
+// Refino de 2026-11: glifo maior (66% do quadro) e traço mais grosso (2.9 em
+// unidades do viewBox 24). Em 16px o traço antigo caía para ~1,6px e o balão
+// virava um borrão violeta na aba do navegador.
 
 export const runtime = "edge";
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
 
 export default function Icon() {
+  // Mesmas razões do gerador de PNGs: 66% do lado e traço 2.9.
+  const side = size.width;
+  const glyphBox = side * 0.66;
+
   return new ImageResponse(
     (
       <div
@@ -22,17 +30,17 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#7c3aed", // primary (Hostinger-aligned purple)
-          borderRadius: 6,
+          background: "#7c3aed", // primary (violeta da marca)
+          borderRadius: side * 0.22,
         }}
       >
         <svg
-          width="20"
-          height="20"
+          width={glyphBox}
+          height={glyphBox}
           viewBox="0 0 24 24"
           fill="none"
           stroke="#ffffff"
-          strokeWidth="2.5"
+          strokeWidth={2.9}
           strokeLinecap="round"
           strokeLinejoin="round"
         >
@@ -43,3 +51,4 @@ export default function Icon() {
     { ...size },
   );
 }
+

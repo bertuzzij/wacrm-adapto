@@ -42,17 +42,31 @@ const BRAND = {
 }
 
 // ---------------------------------------------------------------------------
-// Proporções
+// Refino da arte (2026-11): legibilidade em 16px
+//
+// O glifo original era o `message-square` do lucide em stroke 2.5, dentro de
+// 62,5% do quadro. Em 16px (favicon, aba do navegador, barra de status) o
+// traço cai para ~1,6px e as hastes verticais do balão somem no serrilhado —
+// o ícone vira um borrão violeta.
+//
+// Ajustes, todos pensados para o tamanho PEQUENO:
+//
+//   - stroke mais grosso: a linha sobrevive à redução;
+//   - glifo maior: aproveita o quadro em vez de boiar no meio;
+//   - `rx` do quadro mais generoso: canto arredondado é o que faz o ícone
+//     ser lido como "app" e não como retângulo colorido.
+//
+// Cada valor foi conferido visualmente no PNG final em 16, 32, 180 e 512.
 // ---------------------------------------------------------------------------
 
-// O favicon (src/app/icon.tsx) usa borderRadius 6 num quadro de 32px. Mantemos
-// a mesma razão para o canto arredondado dos ícones "any" — é o que faz o ícone
-// instalado parecer filho do favicon e não um quadrado qualquer.
-const CORNER_RADIUS_RATIO = 6 / 32 // ≈ 18,75%
+/** Traço do glifo, em unidades do viewBox 24. Era 2.5. */
+const GLYPH_STROKE = 2.9
 
-// Mesmo favicon: glifo de 20px dentro de 32px → 62,5% do lado. É a proporção
-// "cheia" da marca.
-const GLYPH_RATIO = 20 / 32
+/** Canto do quadro "any", como fração do lado. Era 6/32 ≈ 18,75%. */
+const CORNER_RADIUS_RATIO = 0.22
+
+/** Glifo dentro do quadro "any". Era 20/32 = 62,5%. */
+const GLYPH_RATIO = 0.66
 
 // Maskable: o sistema recorta o ícone com o formato que quiser (círculo,
 // squircle, gota...) e só garante o círculo interno de diâmetro 80% — ou seja,
@@ -83,6 +97,29 @@ function iconSvg(size, { glyphRatio, rounded }) {
   <rect width="${size}" height="${size}"${corners} fill="${BRAND.background}"/>
   <g transform="translate(${round(offset)} ${round(offset)}) scale(${round(scale, 6)})"
      fill="none" stroke="${BRAND.stroke}" stroke-width="${BRAND.strokeWidth}"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="${BRAND.glyph}"/>
+  </g>
+</svg>
+`
+}
+
+/**
+ * Ícone monocromático de badge — a silhueta branca que o Android desenha na
+ * barra de status.
+ *
+ * Não pode ser o ícone colorido: `badge` no Android é interpretado como
+ * MÁSCARA, então a cor e o fundo viram um quadrado branco chapado. Só a
+ * forma sobrevive.
+ */
+function badgeSvg(size) {
+  const glyphBox = size * 0.78
+  const offset = (size - glyphBox) / 2
+  const scale = glyphBox / 24
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <g transform="translate(${round(offset)} ${round(offset)}) scale(${round(scale, 6)})"
+     fill="none" stroke="#ffffff" stroke-width="${GLYPH_STROKE}"
      stroke-linecap="round" stroke-linejoin="round">
     <path d="${BRAND.glyph}"/>
   </g>
@@ -132,15 +169,35 @@ const TARGETS = [
     maskable: true,
   },
   { file: 'apple-touch-icon.png', size: 180, glyphRatio: GLYPH_RATIO, rounded: false, opaque: true },
+  { file: 'SRC:/apple-icon.png', size: 180, glyphRatio: GLYPH_RATIO, rounded: false, opaque: true },
+  // Badge monocromático da barra de status (referenciado no public/sw.js).
+  { file: 'badge-96.png', size: 96, badge: true },
 ]
 
 // ---------------------------------------------------------------------------
 // Geração
 // ---------------------------------------------------------------------------
 
+/**
+ * Caminho de saída de um alvo.
+ *
+ * `SRC:` marca os que moram em `src/app/` (favicon e apple-icon, que o Next
+ * injeta sozinho no `<head>`). Sem o prefixo, `path.join(outDir, ...)`
+ * normalizaria o `../` e escreveria dentro de `public/`.
+ *
+ * Fonte única: geração e verificação usam esta função, senão a verificação
+ * procura o arquivo no lugar errado e o script "passa" sem validar nada.
+ */
+function targetPath(target) {
+  return target.file.startsWith('SRC:')
+    ? path.join(root, 'src', 'app', target.file.slice(4).replace(/^\//, ''))
+    : path.join(outDir, target.file)
+}
+
 async function render(target) {
-  const file = path.join(outDir, target.file)
-  let pipeline = sharp(Buffer.from(iconSvg(target.size, target)))
+  const file = targetPath(target)
+  const svg = target.badge ? badgeSvg(target.size) : iconSvg(target.size, target)
+  let pipeline = sharp(Buffer.from(svg))
 
   if (target.opaque) {
     // flatten pinta qualquer pixel semitransparente com o violeta da marca e
@@ -197,7 +254,7 @@ function pixelAt(data, channels, size, x, y) {
 }
 
 async function verify(target) {
-  const file = path.join(outDir, target.file)
+  const file = targetPath(target)
   const meta = await sharp(file).metadata()
   const label = target.file
 
