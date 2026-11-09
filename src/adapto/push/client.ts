@@ -88,6 +88,34 @@ export async function getExistingSubscription(): Promise<PushSubscription | null
 }
 
 /**
+ * A inscrição deste aparelho está REGISTRADA no servidor?
+ *
+ * O `pushManager` sozinho não responde isso: uma inscrição pode existir no
+ * navegador e não no banco (falha de rede depois do `subscribe()`, banco
+ * limpo, troca de conta no mesmo aparelho). A UI que confia só no navegador
+ * mostra "Ativo" para um aparelho que nunca vai receber nada.
+ *
+ * Consulta o servidor e devolve `false` em qualquer erro — melhor mostrar
+ * desligado e deixar o usuário ativar de novo do que prometer entrega.
+ */
+export async function isRegisteredOnServer(endpoint?: string): Promise<boolean> {
+  if (!endpoint) return false
+  try {
+    const response = await fetch(
+      `/api/push/subscribe?endpoint=${encodeURIComponent(endpoint)}`,
+      { method: 'GET' },
+    )
+    if (!response.ok) return false
+    const data = (await response.json().catch(() => null)) as
+      | { registered?: boolean }
+      | null
+    return data?.registered === true
+  } catch {
+    return false
+  }
+}
+
+/**
  * Pede permissão, cria a inscrição e guarda no servidor.
  *
  * Devolve o erro em vez de lançar: a UI precisa mostrar o motivo real
@@ -149,9 +177,21 @@ export async function subscribeToPush(): Promise<
       const data = (await response.json().catch(() => null)) as
         | { error?: string }
         | null
+      // Desfaz a inscrição no navegador quando o servidor recusa.
+      //
+      // Sem isto o estado fica MENTINDO: o `pushManager` tem uma inscrição,
+      // então a UI lê "Ativo neste aparelho" e liga o switch — mas nada no
+      // servidor aponta para ela, e nenhum push chega jamais. Foi
+      // exatamente o que o usuário viu: switch ligado E toast de erro ao
+      // mesmo tempo.
+      //
+      // A inscrição só existe quando as DUAS pontas concordam.
+      await subscription.unsubscribe().catch(() => {})
       return { ok: false, error: data?.error ?? 'save-failed' }
     }
   } catch {
+    // Mesma razão: erro de rede não pode deixar inscrição órfã.
+    await subscription.unsubscribe().catch(() => {})
     return { ok: false, error: 'network' }
   }
 

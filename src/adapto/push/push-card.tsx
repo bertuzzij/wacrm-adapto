@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import {
   checkPushSupport,
   getExistingSubscription,
+  isRegisteredOnServer,
   subscribeToPush,
   unsubscribeFromPush,
   type PushSupport,
@@ -48,8 +49,13 @@ export function PushNotificationsCard({ className }: { className?: string }) {
     const supportState = checkPushSupport()
     setSupport(supportState)
     if (supportState.supported) {
+      // Não basta existir inscrição no navegador: o servidor precisa
+      // conhecê-la. Confiar só no navegador fazia o switch mostrar "Ativo
+      // neste aparelho" com o servidor vazio — ligado e mudo ao mesmo tempo.
       const existing = await getExistingSubscription()
-      setSubscribed(Boolean(existing))
+      setSubscribed(
+        existing ? await isRegisteredOnServer(existing.endpoint) : false,
+      )
     }
     setLoaded(true)
   }, [])
