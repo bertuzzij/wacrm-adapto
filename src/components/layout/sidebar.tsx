@@ -363,7 +363,22 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         </nav>
 
         {/* User section */}
-        <div className="shrink-0 border-t border-border p-3">
+        {/* No modo recolhido a barra tem 64px. O bloco de conta (nome da
+            conta + chip de papel + e-mail) não cabe nisso: o chip tem
+            `shrink-0` e vazava ~98px sobre a inbox, flutuando por cima da
+            lista de conversas. Aqui o padding também encolhe, senão restam
+            só 40px úteis. */}
+        <div
+          className={cn(
+            "shrink-0 border-t border-border",
+            // `overflow-hidden` é a rede de segurança: mesmo que algo aqui
+            // dentro não caiba (nome de conta longo, papel traduzido numa
+            // palavra enorme como no alemão), ele é cortado dentro da
+            // barra em vez de flutuar sobre a lista de conversas.
+            "overflow-hidden",
+            collapsed ? "lg:px-1.5 lg:py-3" : "p-3",
+          )}
+        >
           {/* Account name display — surfaced only when the account
               name differs from the user's own name (see
               `showAccountStrip`). For a default solo account the two
@@ -371,7 +386,16 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
               below; for renamed or shared accounts it tells the user
               which account they're acting in. */}
           {showAccountStrip && account?.name ? (
-            <div className="mb-2 flex items-center gap-2 px-3 text-xs text-muted-foreground">
+            <div
+              className={cn(
+                "mb-2 flex items-center gap-2 px-3 text-xs text-muted-foreground",
+                // Recolhida, esta faixa não tem como caber: o nome da conta
+                // e o chip somam mais que os 64px da barra. Esconder é a
+                // única opção honesta — truncar o chip o deixaria ilegível
+                // ("PROPR…"), e ele existe justamente para ser lido.
+                collapsed && "lg:hidden",
+              )}
+            >
               <UsersRound className="size-3.5 shrink-0" />
               {/* `title=` exposes the full name on hover when it
                   gets truncated (long account names + narrow
@@ -400,7 +424,21 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             </div>
           ) : null}
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted/60 focus:bg-muted/60 focus:outline-none data-popup-open:bg-muted/60">
+            <DropdownMenuTrigger
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted/60 focus:bg-muted/60 focus:outline-none data-popup-open:bg-muted/60",
+                // Recolhida: só o avatar, centralizado. TODAS as classes
+                // levam o prefixo `lg:` de propósito — no mobile a barra é
+                // um drawer de 256px (sempre expandido), e sem o prefixo o
+                // rodapé do drawer perderia o padding e o espaço entre
+                // avatar e nome.
+                collapsed && "lg:justify-center lg:gap-0 lg:px-0",
+              )}
+              // O nome acessível continua existindo mesmo sem o texto
+              // visível; recolher não pode custar o rótulo para leitor de
+              // tela.
+              aria-label={profile?.full_name ?? t("defaultUser")}
+            >
               <Avatar className="size-8 shrink-0">
                 {profile?.avatar_url ? (
                   <AvatarImage
@@ -414,7 +452,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                     "U"}
                 </AvatarFallback>
               </Avatar>
-              <div className="min-w-0 flex-1">
+              <div className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
                 <p className="truncate text-sm font-medium text-foreground">
                   {profile?.full_name ?? t("defaultUser")}
                 </p>
