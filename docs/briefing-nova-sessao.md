@@ -268,8 +268,11 @@ novo build de imagem:
 ```powershell
 # 1. build com os NEXT_PUBLIC_* como build args (são inlinados em build time)
 #    NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
-#    NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_APP_LOCALE=pt
-docker build ... -t wacrm-app:latest .
+#    NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_APP_LOCALE=pt,
+#    NEXT_PUBLIC_VAPID_PUBLIC_KEY (Web Push)
+#    ⚠ Leia a seção "A armadilha do cache do Docker" ANTES: sem --no-cache
+#      o bundle pode sair do build anterior, sem a chave nova.
+docker build --no-cache ... -t wacrm-app:latest .
 
 # 2. exportar e transferir
 docker save wacrm-app:latest -o wacrm.tar   # ~88 MB comprimido
@@ -278,6 +281,49 @@ docker save wacrm-app:latest -o wacrm.tar   # ~88 MB comprimido
 docker tag wacrm-app:latest wacrm-app:previous   # mantém rollback
 docker load -i wacrm.tar
 docker compose up -d --force-recreate
+```
+
+### A armadilha do cache do Docker (custou três deploys errados)
+
+**Sintoma:** o app em produção diz "o servidor não tem as chaves de push
+configuradas" (`no-vapid-key`), mesmo com `NEXT_PUBLIC_VAPID_PUBLIC_KEY` presente no
+`env` do container e no `.env.local` do servidor.
+
+**Causa:** os valores `NEXT_PUBLIC_*` são **inlinados no bundle JavaScript em build
+time**. O Docker cacheia a camada `RUN npm run build` pelo conteúdo do contexto — e
+`ARG`/`ENV` **não invalidam essa camada**. Resultado: `docker build` "termina com
+sucesso", produz uma imagem nova, e o bundle dentro dela é o de um build antigo.
+
+O build log mostra a mentira, e é fácil não olhar:
+
+```
+#10 CACHED
+#11 CACHED
+#12 CACHED        ← o npm run build foi reaproveitado
+```
+
+**Regra:** qualquer deploy que dependa de um `NEXT_PUBLIC_*` novo ou alterado usa
+`docker build --no-cache`. Sem exceção. Custa alguns minutos de build e evita
+deploy que "passou" mas não mudou nada.
+
+**Corolário — a verificação tem que ser na imagem que vai subir, não numa de
+teste.** Eu validei uma imagem buildada com um `ARG` de teste, confirmei que a chave
+estava no bundle, e então construí a imagem real — que veio do cache sem a chave.
+O relatório disse "verificado" e o app em produção dizia o contrário.
+
+Verificação que funciona (roda no container, lê o bundle de verdade):
+
+```bash
+# o prefixo da chave esperada (16 chars bastam para identificar)
+grep -rl "<prefixo-da-chave>" /app/.next/static/chunks/ | head -2
+```
+
+E confirme também o inverso: a **chave privada nunca** pode aparecer em
+`/.next/static/` — ela é runtime, lida no servidor.
+
+```bash
+docker exec wacrm sh -c 'grep -rl "VAPID_PRIVATE_KEY" /app/.next/static/ | wc -l'
+# esperado: 0
 ```
 
 Topologia de produção (valores omitidos de propósito):
@@ -360,6 +406,11 @@ Estas foram escolhas conscientes, não acidentes:
 | Exceção: `wait_for_reply` com falha **para** a execução | Os passos seguintes só devem rodar depois da resposta do contato |
 | `tag_id` de automação é FK, sempre UUID | Aceitar nome digitado gerou automação que falhava em toda execução |
 | Canal de realtime do Supabase tem nome único por instância | Nome fixo + dois consumidores = crash da página inteira |
+| Notificação é **dois** ajustes separados, não um switch | Um switch só prometia "notificação" e entregava apenas aviso de aba aberta. Fechou o app, acabou — e o usuário reportou como defeito. Agora há dois cards com promessas distintas: push (app fechado) e navegador (aba aberta) |
+| O switch de push só fica ligado se o **servidor** confirmar a inscrição | O navegador pode ter uma inscrição que o banco não conhece. Confiar só no navegador mostrava "Ativo" para um aparelho que nunca receberia nada |
+| Push é por **aparelho**, não por usuário | A mesma pessoa atende no desktop e no celular; cada um tem endpoint próprio. Uma coluna no perfil representaria um só |
+| Push é enviado por **conta**, não por usuário | O aviso é "chegou mensagem"; qualquer pessoa da equipe pode atender |
+| No iPhone só funciona com o app instalado | WebKit entrega Web Push apenas para app na Tela de Início (iOS 16.4+). Não é escolha nossa — o card explica em vez de oferecer um switch que falharia |
 
 ---
 
@@ -381,6 +432,17 @@ Estas foram escolhas conscientes, não acidentes:
   pela linha `...  main -> main`.
 - **Scripts `.mjs`** que importam `pg` precisam morar em `wacrm/scripts/` — fora
   dali o módulo não resolve.
+- **`docker build` e `NEXT_PUBLIC_*`:** `ARG`/`ENV` **não invalidam** a camada
+  `RUN npm run build`. Sem `--no-cache` o deploy "passa" e o bundle continua o do
+  build anterior. Ver [A armadilha do cache do Docker](#a-armadilha-do-cache-do-docker-custou-três-deploys-errados).
+- **`profiles.id` não é o id do usuário.** A PK da linha é `profiles.id`; o vínculo
+  com `auth.users` é `profiles.user_id`. Consultar `.eq('id', user.id)` compila, roda
+  e **não acha nada** — o erro aparece como "Account not found" ou como uma política
+  de RLS que nega tudo em silêncio. Use `getCurrentAccount()`; para SQL, compare com
+  `auth.uid()` em `user_id`.
+- **Scripts `.mjs` que usam dependência CommonJS** (ex.: `web-push`) precisam de
+  `import * as x from 'pkg'` — `import x from 'pkg'` falha com "does not provide an
+  export named 'default'" tanto no Turbopack quanto no Node ESM.
 
 ---
 
