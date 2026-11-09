@@ -81,3 +81,11 @@ wacrm.tar
 .phone-number-id.backup.txt
 *.backup.txt
 
+
+# Artefatos do backfill de mídia (scripts/plan-media-backfill.mjs).
+# Contêm URLs e ids de produção — não são código, não vão para o repo.
+backfill-plan.json
+backfill-backup.json
+backfill-verdict.json
+backfill-dryrun.json
+backfill-fix2.json
