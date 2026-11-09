@@ -574,6 +574,12 @@
       "empty": "Ningún miembro con teléfono visible en este grupo",
       "noMatch": "Ningún miembro encontrado",
       "admin": "admin"
+    },
+    "videoCard": {
+      "label": "Vídeo",
+      "large": "archivo grande",
+      "play": "Ver vídeo",
+      "close": "Cerrar vídeo"
     }
   },
   "Contacts": {

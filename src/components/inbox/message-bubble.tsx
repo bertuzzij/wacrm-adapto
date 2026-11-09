@@ -32,8 +32,8 @@ import {
   MediaDocumentBubble,
   MediaImageBubble,
   MediaUnavailable,
-  MediaVideoBubble,
 } from "./message-media";
+import { LazyVideoBubble } from "@/adapto/video-playback/lazy-video-bubble";
 import { InteractivePreview } from "@/components/interactive/interactive-preview";
 import {
   templateMessageView,
@@ -131,7 +131,7 @@ function TemplateHeader({
       {header.type === "image" ? (
         <MediaImageBubble message={media} t={t} />
       ) : header.type === "video" ? (
-        <MediaVideoBubble message={media} t={t} />
+        <LazyVideoBubble message={media} t={t} />
       ) : (
         <MediaDocumentBubble message={media} t={t} />
       )}
@@ -220,7 +220,7 @@ function MessageContent({
       return (
         <div>
           {message.media_url ? (
-            <MediaVideoBubble message={message} onOpen={openMedia} t={t} />
+            <LazyVideoBubble message={message} onOpen={openMedia} t={t} />
           ) : (
             <MediaUnavailable label={t("video")} t={t} />
           )}

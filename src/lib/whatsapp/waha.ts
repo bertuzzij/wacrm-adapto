@@ -471,6 +471,34 @@ export async function wahaDownload(
   }
 }
 
+/**
+ * Repassa a requisição de mídia para o WAHA preservando o `Range`.
+ *
+ * Por que existe: `wahaDownload` carrega o arquivo INTEIRO na memória
+ * (`arrayBuffer()`), e o proxy repassava isso ao navegador. Um vídeo de
+ * 300 MB atravessava a RAM do servidor por completo — e o `<video>` fazia
+ * isso só por a conversa estar aberta. O WAHA suporta `Range` (responde
+ * 206 com `Content-Range`), então o player pode buscar fatias.
+ *
+ * Devolve a `Response` do WAHA sem tocar no corpo: o `ReadableStream`
+ * chega ao cliente enquanto os bytes ainda estão sendo lidos, em vez de
+ * esperar o arquivo inteiro.
+ *
+ * Sem `rangeHeader`, o comportamento é o download completo — igual ao
+ * `wahaDownload`, mas em streaming.
+ */
+export async function wahaStreamMedia(
+  url: string,
+  rangeHeader?: string | null,
+): Promise<Response> {
+  const headers = wahaHeaders(false)
+  // Só repassa o Range quando ele existe: um `Range: undefined` viraria a
+  // string "undefined" num header.
+  if (rangeHeader) headers.Range = rangeHeader
+
+  return fetch(url, { headers })
+}
+
 export async function wahaHeadMedia(
   url: string,
 ): Promise<{ mimeType: string; fileSize: number | null }> {
