@@ -573,7 +573,9 @@
       "search": "Buscar miembro...",
       "empty": "Ningún miembro con teléfono visible en este grupo",
       "noMatch": "Ningún miembro encontrado",
-      "admin": "admin"
+      "admin": "admin",
+      "noPhone": "Este miembro no tiene teléfono, así que WhatsApp no puede mencionarlo",
+      "noName": "Miembro sin nombre"
     },
     "videoCard": {
       "label": "Vídeo",

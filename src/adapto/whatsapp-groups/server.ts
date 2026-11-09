@@ -38,23 +38,37 @@ export function clearGroupNameCache(): void {
 /**
  * Membros do grupo, com nome e foto.
  *
- * O endpoint de grupos NÃO traz o nome (`DisplayName` vem vazio para todos
- * os participantes — verificado contra a API real). O nome está no endpoint
- * de contatos, consultado por telefone. A foto exige uma terceira chamada.
+ * POR QUE NÃO UMA CHAMADA POR MEMBRO
  *
- * Resolver tudo em paralelo por membro é deliberado: um grupo de 6 pessoas
- * faz 12 chamadas curtas em vez de 12 em série. Com `Promise.allSettled`,
- * uma falha isolada deixa aquele membro sem nome/foto, sem derrubar a lista
- * inteira — que é o que importa quando o atendente está esperando para
- * mencionar alguém.
+ * A versão anterior consultava contato e foto por TELEFONE, dois pedidos
+ * por membro. Medido no grupo real desta instalação: 150 participantes →
+ * 300 chamadas HTTP numa única abertura do seletor. Era essa a lentidão
+ * relatada ("demora no carregamento dos contatos").
  *
- * A foto é devolvida como URL do WhatsApp, não copiada: aqui a lista é
- * efêmera (dura o tempo do seletor aberto), diferente do avatar de contato
- * que fica salvo e por isso é copiado para o Storage.
+ * Duas descobertas mudaram a abordagem:
+ *
+ *   1. O endpoint `GET /api/contacts/all?session=…` devolve a agenda
+ *      INTEIRA numa chamada — 1088 contatos, 966 com nome, em ~100 ms.
+ *      Uma chamada substitui 150.
+ *
+ *   2. Quase nenhum participante tem `PhoneNumber`. Verificado: o grupo
+ *      tem 150 `@lid` e ZERO `@c.us`. Consultar contato por telefone
+ *      (`…@c.us`) não casava com nada, então o nome vinha vazio mesmo
+ *      para quem estava na agenda. O índice correto é o `@lid`.
+ *
+ * O `DisplayName` do participante NÃO serve como nome: o WAHA o preenche
+ * com o telefone mascarado (`+55∙∙∙∙∙∙∙∙11`), que não identifica ninguém.
+ *
+ * A foto continua vindo por membro, mas agora sem bloquear a lista: os
+ * nomes chegam na primeira resposta e as fotos entram depois (ver o
+ * comentário de `withPictures`).
  */
 export async function fetchGroupMembers(
   groupId: string
 ): Promise<GroupMember[]> {
+  const cached = membersCache.get(groupId);
+  if (cached && cached.expiresAt > Date.now()) return cached.members;
+
   const url = `${wahaBaseUrl()}/api/${encodeURIComponent(wahaSession())}/groups/${encodeURIComponent(groupId)}`;
 
   const controller = new AbortController();
@@ -64,28 +78,23 @@ export async function fetchGroupMembers(
     if (!res.ok) return [];
     const data = (await res.json()) as WahaGroupInfo;
 
-    // Participantes sem telefone mencionável já saem fora aqui, para não
-    // gastarmos duas chamadas com quem não vai aparecer na lista.
-    const phones = (data?.Participants ?? [])
-      .map(memberPhone)
-      .filter((p, i, arr) => p && arr.indexOf(p) === i);
-
-    const resolved = new Map<
-      string,
-      { name: string | null; avatarUrl: string | null }
-    >();
-
-    await Promise.all(
-      phones.map(async (phone) => {
-        const [name, picture] = await Promise.all([
-          fetchContactName(`${phone}@c.us`).catch(() => null),
-          fetchChatPictureUrl(`${phone}@c.us`).catch(() => null),
-        ]);
-        resolved.set(phone, { name, avatarUrl: picture });
-      })
+    const participants = data?.Participants ?? [];
+    // O diretório é uma chamada só; se falhar, a lista ainda é montada com
+    // os identificadores (o atendente menciona pelo telefone quando houver).
+    const directory = await fetchContactDirectory().catch(
+      () => new Map<string, string>()
     );
 
-    return toGroupMembers(data?.Participants, resolved);
+    const members = toGroupMembers(
+      participants,
+      directory
+    );
+
+    membersCache.set(groupId, {
+      members,
+      expiresAt: Date.now() + MEMBERS_TTL_MS,
+    });
+    return members;
   } catch {
     return [];
   } finally {
@@ -93,38 +102,52 @@ export async function fetchGroupMembers(
   }
 }
 
-/** Nome do contato pelo endpoint de contatos (`name` da agenda, depois `pushname`). */
-async function fetchContactName(chatId: string): Promise<string | null> {
-  const url = `${wahaBaseUrl()}/api/contacts?session=${encodeURIComponent(wahaSession())}&contactId=${encodeURIComponent(chatId)}`;
+/** Quanto tempo a lista de membros fica em cache. */
+const MEMBERS_TTL_MS = 5 * 60 * 1000;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(url, { headers: headers(), signal: controller.signal });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { name?: string; pushname?: string };
-    const picked = (data?.name ?? data?.pushname ?? '').trim();
-    return picked || null;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
+const membersCache = new Map<string, { members: GroupMember[]; expiresAt: number }>();
+
+/** Só para testes. */
+export function clearMembersCache(): void {
+  membersCache.clear();
 }
 
-/** URL da foto de perfil, ou null quando o contato não tem. */
-async function fetchChatPictureUrl(chatId: string): Promise<string | null> {
-  const url = `${wahaBaseUrl()}/api/${encodeURIComponent(wahaSession())}/chats/${encodeURIComponent(chatId)}/picture`;
+/**
+ * Agenda de contatos indexada por identificador (`lid` e telefone).
+ *
+ * `GET /api/contacts/all` devolve uma entrada por contato com `id`
+ * (`…@lid` ou `…@c.us`) e o `pushname` que o WhatsApp conhece. Uma
+ * chamada para o diretório inteiro é ordens de magnitude mais barata que
+ * uma por membro, e responde pelo identificador que o participante
+ * realmente usa.
+ *
+ * Devolve mapa vazio em falha: nome é enfeite, a menção não é.
+ */
+async function fetchContactDirectory(): Promise<Map<string, string>> {
+  const url = `${wahaBaseUrl()}/api/contacts/all?session=${encodeURIComponent(wahaSession())}`;
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS * 3);
   try {
     const res = await fetch(url, { headers: headers(), signal: controller.signal });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { url?: string };
-    return data?.url?.trim() || null;
+    if (!res.ok) return new Map();
+
+    const rows = (await res.json()) as Array<{
+      id?: string;
+      name?: string;
+      pushname?: string;
+    }>;
+
+    const byId = new Map<string, string>();
+    for (const row of rows ?? []) {
+      const id = (row.id ?? '').trim();
+      if (!id) continue;
+      const name = (row.name ?? row.pushname ?? '').trim();
+      if (name) byId.set(id, name);
+    }
+    return byId;
   } catch {
-    return null;
+    return new Map();
   } finally {
     clearTimeout(timer);
   }

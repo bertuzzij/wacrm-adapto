@@ -16,8 +16,15 @@
 
 /** Um participante do grupo, como a tela mostra. */
 export interface GroupMember {
-  /** Telefone em dígitos, sem sufixo `@c.us`. */
+  /** Telefone em dígitos, sem sufixo `@c.us`. Vazio quando só há LID. */
   phone: string;
+  /**
+   * Identificador WhatsApp do participante (`…@lid` ou `…@c.us`).
+   *
+   * É por ele que a agenda é consultada: no grupo medido, todos os 150
+   * participantes eram `@lid` e nenhum tinha telefone.
+   */
+  waId: string;
   /** Nome conhecido, ou '' quando o WAHA não sabe. */
   name: string;
   /** URL da foto de perfil, ou null. Já copiada para o nosso Storage. */
@@ -65,47 +72,102 @@ export function memberPhone(participant: WahaParticipant): string {
   return '';
 }
 
-/** Converte a resposta do endpoint de grupos em membros utilizáveis. */
+/**
+ * `DisplayName` do participante, quando ele é um NOME de verdade.
+ *
+ * O WAHA preenche este campo com o telefone mascarado (`+55∙∙∙∙∙∙∙∙11`)
+ * quando não conhece a pessoa — usar isso como nome enche a lista de
+ * rótulos inúteis. Um valor só passa se tiver alguma letra e não for
+ * apenas um número mascarado.
+ */
+function usableDisplayName(value: string | null | undefined): string {
+  const name = (value ?? '').trim();
+  if (!name) return '';
+  // Mascarado: dígitos, `+`, espaços e o caractere de bolinha.
+  if (/^[+\d\s∙•·]+$/.test(name)) return '';
+  return /[a-zA-Z\u00C0-\u024F]/.test(name) ? name : '';
+}
+
+/**
+ * Converte a resposta do endpoint de grupos em membros utilizáveis.
+ *
+ * Duas correções em relação à primeira versão, ambas verificadas contra a
+ * API real desta instalação:
+ *
+ *   1. O nome é resolvido pelo IDENTIFICADOR (`@lid`), não pelo telefone.
+ *      O grupo medido tem 150 participantes, todos `@lid` e nenhum `@c.us`
+ *      — consultar contato por telefone não casava com nada, e o nome
+ *      vinha vazio mesmo para quem estava na agenda.
+ *
+ *   2. `DisplayName` só é usado quando é um nome real. Quando o WAHA não
+ *      conhece a pessoa, ele traz o telefone mascarado ali.
+ *
+ * Quem não tem telefone continua aparecendo: a menção acontece pelo texto
+ * quando há telefone, mas o membro sem telefone ainda é informação útil
+ * ("o fulano está no grupo") e antes ele era descartado em silêncio.
+ */
 export function toGroupMembers(
   participants: WahaParticipant[] | null | undefined,
   /**
-   * Nome e foto por telefone, resolvidos pelo servidor.
+   * Agenda indexada por identificador (`lid`/telefone) → nome.
    *
-   * Vem de fora porque exige rede: o endpoint de grupos não traz o nome
-   * (`DisplayName` chega vazio) e a foto é outra chamada. Quem chama isto
-   * já buscou esses dados; aqui só cruzamos com os participantes.
+   * Vem de fora porque exige rede. Uma única consulta ao diretório da
+   * sessão substitui uma chamada por membro (ver `fetchGroupMembers`).
    */
-  resolved?: Map<string, { name?: string | null; avatarUrl?: string | null }>
+  directory?: Map<string, string>
 ): GroupMember[] {
   const out: GroupMember[] = [];
   const seen = new Set<string>();
 
   for (const p of participants ?? []) {
     const phone = memberPhone(p);
-    // Sem telefone não há menção possível: o `@lid` não é endereçável pelo
-    // texto. Pular aqui evita oferecer na tela alguém que não menciona.
-    if (!phone || seen.has(phone)) continue;
-    seen.add(phone);
+    const waId = memberWaId(p);
+    // Sem identificador nenhum não há como deduplicar nem mencionar.
+    if (!phone && !waId) continue;
+    const key = phone || waId;
+    if (seen.has(key)) continue;
+    seen.add(key);
 
-    const extra = resolved?.get(phone);
+    // Prioridade: diretório (nome da agenda) > DisplayName (quando é nome
+    // de verdade) > vazio.
+    const name =
+      directory?.get(waId) ?? directory?.get(phone) ?? usableDisplayName(p.DisplayName);
 
     out.push({
       phone,
-      // Prioridade: nome resolvido > DisplayName (quando vier) > vazio.
-      name: (extra?.name ?? p.DisplayName ?? '').trim(),
-      avatarUrl: extra?.avatarUrl ?? null,
+      waId,
+      name: name.trim(),
+      // Foto por membro sairia caro (150 requisições); fica nula e a lista
+      // mostra as iniciais. O avatar de contato continua sendo importado
+      // separadamente pelo fluxo de sincronização.
+      avatarUrl: null,
       isAdmin: p.IsAdmin === true || p.IsSuperAdmin === true,
     });
   }
 
   // Ordena por nome quando existe, para a lista ficar previsível; quem não
-  // tem nome vai para o fim, por telefone.
+  // tem nome vai para o fim, por identificador.
   return out.sort((a, b) => {
     if (a.name && b.name) return a.name.localeCompare(b.name);
     if (a.name) return -1;
     if (b.name) return 1;
-    return a.phone.localeCompare(b.phone);
+    return (a.phone || a.waId).localeCompare(b.phone || b.waId);
   });
+}
+
+/**
+ * Identificador do participante para busca na agenda.
+ *
+ * É o `@lid` na grande maioria dos grupos atuais — é o índice em que a
+ * agenda do WAHA realmente guarda o nome.
+ */
+export function memberWaId(participant: WahaParticipant): string {
+  const jid = (participant.JID ?? '').trim();
+  if (jid) return jid;
+  const lid = (participant.LID ?? '').trim();
+  if (lid) return lid;
+  const phone = memberPhone(participant);
+  return phone ? `${phone}@c.us` : '';
 }
 
 /** Marcador da menção, exatamente como o WhatsApp espera no texto. */
@@ -131,6 +193,9 @@ export function mentionedPhones(
 ): string[] {
   const found: string[] = [];
   for (const m of members) {
+    // Membro sem telefone não é mencionável por texto: o WhatsApp menciona
+    // por número, e um LID não serve.
+    if (!m.phone) continue;
     // Fronteira à esquerda para `@5516…` não casar dentro de `x@5516…`;
     // `\D` à direita para não pegar um telefone que só é prefixo de outro.
     const pattern = new RegExp(`@${m.phone}(?!\\d)`);

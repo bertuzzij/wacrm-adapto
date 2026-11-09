@@ -41,6 +41,29 @@ export function MentionButton({
   const [query, setQuery] = useState('');
   const wrapperRef = useRef<HTMLDivElement>(null);
 
+  // Troca de conversa: a lista anterior não vale mais.
+  //
+  // BUG RELATADO: "quando eu mudo de chat ainda carrega a menção do chat
+  // anterior, aí eu preciso selecionar uma conversa com um usuário para ele
+  // 'limpar'". Causa: o efeito abaixo tinha `members.length > 0` como guarda
+  // de "já carreguei", e `members` nunca era esvaziado. Ao abrir um segundo
+  // grupo, a guarda via lista cheia e pulava a busca — mostrando os membros
+  // do grupo anterior. Só uma conversa individual (que devolve lista vazia)
+  // zerava o estado.
+  //
+  // `key` não resolve: o componente não é remontado ao trocar de conversa,
+  // porque o React o reutiliza na mesma posição da árvore. O reset precisa
+  // ser explícito, e tem de acontecer no MESMO passo em que a conversa muda
+  // — resetar num efeito separado deixaria um render mostrando a lista
+  // velha sob o cabeçalho novo.
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  if (loadedFor !== conversationId) {
+    setLoadedFor(conversationId);
+    setMembers([]);
+    setQuery('');
+    setLoading(false);
+  }
+
   // Busca ao abrir, não no mount: a maioria das mensagens não menciona
   // ninguém, e uma chamada por conversa aberta seria desperdício.
   //
@@ -107,7 +130,11 @@ export function MentionButton({
   const filtered = members.filter((m) => {
     const q = query.trim().toLowerCase();
     if (!q) return true;
-    return m.name.toLowerCase().includes(q) || m.phone.includes(q);
+    return (
+      m.name.toLowerCase().includes(q) ||
+      m.phone.includes(q) ||
+      m.waId.toLowerCase().includes(q)
+    );
   });
 
   return (
@@ -152,10 +179,15 @@ export function MentionButton({
             ) : (
               filtered.map((m) => (
                 <button
-                  key={m.phone}
+                  key={m.waId || m.phone}
                   type="button"
                   onClick={() => handlePick(m.phone)}
-                  className="flex w-full items-start gap-2 px-3 py-2 text-left transition-colors hover:bg-muted"
+                  // Membro sem telefone não é mencionável: o WhatsApp
+                  // menciona por número e um LID não serve. Fica visível
+                  // (saber quem está no grupo é útil) mas desabilitado.
+                  disabled={!m.phone}
+                  title={!m.phone ? t('noPhone') : undefined}
+                  className="flex w-full items-start gap-2 px-3 py-2 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
                 >
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-[10px] font-medium text-foreground">
                     {m.avatarUrl ? (
@@ -171,12 +203,12 @@ export function MentionButton({
                         className="h-7 w-7 rounded-full object-cover"
                       />
                     ) : (
-                      (m.name || m.phone).charAt(0).toUpperCase()
+                      (m.name || m.phone || m.waId).charAt(0).toUpperCase()
                     )}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-xs font-medium text-foreground">
-                      {m.name || m.phone}
+                      {m.name || m.phone || t('noName')}
                       {m.isAdmin && (
                         <span className="ml-1.5 rounded bg-amber-500/15 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
                           {t('admin')}
@@ -186,7 +218,7 @@ export function MentionButton({
                     {/* O telefone fica visível porque é ele que será
                         mencionado — o nome que o cliente vê é o da agenda
                         dele, não o nosso. */}
-                    {m.name && (
+                    {m.name && m.phone && (
                       <span className="block truncate text-[10px] text-muted-foreground">
                         {m.phone}
                       </span>
