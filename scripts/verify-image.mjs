@@ -1,7 +1,11 @@
 // Confere, DENTRO da imagem construída, que o pacote de PWA/push está
 // completo. Roda no container: docker run --rm --entrypoint node wacrm-app
-const fs = require('fs')
-const path = require('path')
+//
+// Import ESM, não `require()`. O arquivo é `.mjs`, então o Node o trata
+// como módulo ES, onde `require` não existe — e o lint também recusa
+// (`@typescript-eslint/no-require-imports`), o que deixava o CI vermelho.
+import fs from 'node:fs'
+import path from 'node:path'
 
 let chunksWithKey = 0
 const walk = (dir) => {

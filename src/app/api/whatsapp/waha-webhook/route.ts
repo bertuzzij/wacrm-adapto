@@ -25,6 +25,7 @@ import {
 } from '@/adapto/whatsapp-groups/identity'
 import { fetchGroupName } from '@/adapto/whatsapp-groups/server'
 import { contactIdForFromMe, isLid } from '@/adapto/whatsapp-groups/from-me'
+import { messageAuthorFrom } from '@/adapto/whatsapp-groups/author'
 
 /**
  * WAHA → CRM bridge.
@@ -433,6 +434,27 @@ async function toMetaBody(event: WahaEvent): Promise<Record<string, unknown> | n
       const message = buildMetaMessage(payload, groupKey)
       if (!message) return null
       const groupName = await fetchGroupName(payload.from!)
+
+      // AUTOR DA MENSAGEM (migração 069).
+      //
+      // O formato Meta não tem onde guardar "quem, dentro do grupo, mandou
+      // isto" — a Cloud API oficial não expõe grupos, então o schema nunca
+      // precisou do campo. Carregamos o autor num campo próprio do payload
+      // (o mesmo recurso que `crm_sender` já usa logo acima) e o handler
+      // Meta o persiste sem precisar entender de grupo.
+      //
+      // Sem isso, todo membro externo virava `sender_type='customer'` sem
+      // nome, e uma thread com seis participantes parecia um monólogo.
+      const author = messageAuthorFrom(payload, { isGroup: true })
+      const withAuthor = author
+        ? {
+            ...message,
+            author_name: author.name,
+            author_wa_id: author.waId,
+            author_phone: author.phone,
+          }
+        : message
+
       return wrap({
         contacts: [
           {
@@ -440,7 +462,7 @@ async function toMetaBody(event: WahaEvent): Promise<Record<string, unknown> | n
             wa_id: groupKey,
           },
         ],
-        messages: [message],
+        messages: [withAuthor],
       })
     }
 

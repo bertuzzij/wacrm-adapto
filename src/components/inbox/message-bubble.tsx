@@ -424,9 +424,10 @@ export function MessageBubble({
             onPrimary={isAgent}
           />
         )}
-        {/* Autor, só quando o pai informa (hoje: conversas de grupo, onde
-            vários atendentes dividem o mesmo número). Some quando não há
-            nome — melhor nada do que "-". */}
+        {/* Autor, só quando o pai informa (conversas de grupo). Cobre os
+            dois casos: colega da equipe (resolvido pelo `profiles`) e
+            membro externo (PushName do WhatsApp, migração 069). Some
+            quando não há nome — melhor nada do que "-". */}
         {authorName && (
           <p
             className={cn(

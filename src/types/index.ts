@@ -277,6 +277,21 @@ export interface Message {
    */
   interactive_reply_id?: string;
   /**
+   * Quem enviou, dentro de uma conversa de GRUPO. Null em conversa
+   * individual e em toda linha anterior à migração 069.
+   *
+   * O WhatsApp mostra o nome do membro acima de cada bolha em grupo porque
+   * ali há várias pessoas; sem isso todo membro externo virava "o cliente",
+   * e uma thread com seis participantes parecia um monólogo.
+   *
+   * `author_wa_id` é o identificador estável (LID/JID) — sobrevive a uma
+   * troca de nome — e `author_phone` só vem quando o WAHA informa o
+   * telefone real (nunca a partir de LID, que é opaco).
+   */
+  author_name?: string | null;
+  author_wa_id?: string | null;
+  author_phone?: string | null;
+  /**
    * Structured payload of an OUTBOUND interactive message (reply
    * buttons or list) we sent. Lets the thread re-render the buttons /
    * rows, not just the body text. Only set when `content_type ===

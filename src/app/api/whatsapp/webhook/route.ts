@@ -761,6 +761,34 @@ async function processMessage(
       ? 'agent'
       : 'customer'
 
+  // Autor do grupo: o bridge WAHA anexa `author_name` / `author_wa_id` /
+  // `author_phone` ao objeto da mensagem (migração 069). Lemos de forma
+  // defensiva e devolvemos as colunas só quando há valor — assim o INSERT
+  // do caminho Meta não muda em nada.
+  //
+  // Mensagem NOSSA (`agent`) nunca recebe autor de grupo: quem enviou foi a
+  // equipe, e `sender_id` já responde isso com precisão pelo perfil.
+  const authorColumns = (msg: unknown): Record<string, string> => {
+    if (senderType !== 'customer') return {}
+    const raw = msg as {
+      author_name?: unknown
+      author_wa_id?: unknown
+      author_phone?: unknown
+    }
+    const columns: Record<string, string> = {}
+    for (const [field, column] of [
+      ['author_name', 'author_name'],
+      ['author_wa_id', 'author_wa_id'],
+      ['author_phone', 'author_phone'],
+    ] as const) {
+      const value = raw[field]
+      if (typeof value === 'string' && value.trim()) {
+        columns[column] = value.trim()
+      }
+    }
+    return columns
+  }
+
   // Idempotent insert. Meta retries webhook deliveries (a slow ack, a
   // transient 5xx), and each retry replays the exact same message.id. The
   // unique index on (conversation_id, message_id) added in migration 037
@@ -791,6 +819,14 @@ async function processMessage(
         // the column; null for every other content_type so existing inserts
         // behave identically.
         interactive_reply_id: interactiveReplyId,
+        // AUTOR EM CONVERSA DE GRUPO (migração 069).
+        //
+        // Vem do bridge WAHA num campo próprio do payload, porque o formato
+        // Meta não tem onde representar "quem, dentro do grupo, mandou isto"
+        // (a Cloud API oficial não expõe grupos). Ausente em conversa
+        // individual e no caminho Meta — nesse caso fica NULL, que é o
+        // valor correto.
+        ...authorColumns(message),
       },
       { onConflict: 'conversation_id,message_id', ignoreDuplicates: true }
     )

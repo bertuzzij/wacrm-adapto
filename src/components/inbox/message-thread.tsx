@@ -1345,10 +1345,18 @@ export function MessageThread({
                         <MessageBubble
                           message={msg}
                           authorName={
-                            conversation.kind === "group" &&
-                            (msg.sender_type === "agent" || msg.sender_type === "bot")
-                              ? (profiles.find((p) => p.user_id === msg.sender_id)?.full_name ??
-                                null)
+                            conversation.kind === "group"
+                              ? (msg.sender_type === "agent" ||
+                                msg.sender_type === "bot"
+                                  ? (profiles.find(
+                                      (p) => p.user_id === msg.sender_id
+                                    )?.full_name ?? null)
+                                  : // Membro externo do grupo: o nome vem do
+                                    // próprio WhatsApp (PushName), gravado
+                                    // pela migração 069. Antes daqui todo
+                                    // mundo caía no mesmo "customer" sem
+                                    // nome, e não dava para saber quem falou.
+                                    (msg.author_name ?? null))
                               : null
                           }
                           template={
