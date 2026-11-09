@@ -24,6 +24,32 @@ import { resumeAwaitingReply, runAutomationsForTrigger } from '@/lib/automations
 import { dispatchInboundToFlows } from '@/lib/flows/engine'
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
+import { sendPushToAccount } from '@/adapto/push/sender'
+import { buildPushPayload } from '@/adapto/push/payload'
+import { getT } from '@/lib/i18n/translate'
+import { APP_NAME } from '@/adapto/brand'
+import type { ContentType } from '@/types'
+
+/**
+ * Rótulos do aviso, resolvidos uma vez por processo a partir do dicionário
+ * da instalação (o idioma é fixado em build time).
+ *
+ * O aviso aparece FORA do app — na tela de bloqueio — então precisa estar
+ * no idioma do usuário; os padrões do módulo são em inglês.
+ */
+const pushLabels = (() => {
+  const t = getT('Settings.browserNotifications.labels')
+  return {
+    fallbackTitle: t('fallbackTitle'),
+    image: t('image'),
+    audio: t('audio'),
+    video: t('video'),
+    document: t('document'),
+    location: t('location'),
+    template: t('template'),
+  }
+})()
+
 import {
   applyBroadcastRecipientStatus,
   flagBroadcastReply,
@@ -1004,6 +1030,40 @@ async function processMessage(
     content_type: contentType,
     text: contentText,
   })
+
+  // Web Push — o aviso que chega com o app FECHADO.
+  //
+  // Aqui, e não antes, porque tudo o que o aviso precisa já existe: a
+  // conversa, o contato e a mensagem. E DEPOIS do fan-out de automações e
+  // IA, porque o celular não deve apitar antes de o servidor terminar de
+  // decidir se um bot vai responder pelo cliente.
+  //
+  // Awaited (não fire-and-forget) pelo mesmo motivo das chamadas acima:
+  // estamos dentro do `after()`, que só mantém vivas as promises que
+  // consegue ver. `sendPushToAccount` nunca lança e sai cedo quando não há
+  // VAPID configurado ou nenhuma inscrição.
+  // Só se chega aqui com mensagem de cliente (`senderType === 'agent'`
+  // já retornou acima), então o valor é literal — sem o ternário, que o
+  // TypeScript rejeita por não haver sobreposição possível.
+  const pushPayload = buildPushPayload({
+    message: {
+      conversation_id: conversation.id,
+      sender_type: 'customer',
+      // `contentType` é string simples (vem de um Set); o domínio do
+      // `ContentType` já foi garantido pela lista ALLOWED_CONTENT_TYPES.
+      content_type: contentType as ContentType,
+      content_text: contentText,
+    },
+    contact: contactRecord,
+    // Rótulos traduzidos: o aviso aparece fora do app, então precisa estar
+    // no idioma da instalação, não no inglês padrão do módulo.
+    labels: pushLabels,
+    appName: APP_NAME,
+  })
+
+  if (pushPayload) {
+    await sendPushToAccount(accountId, pushPayload)
+  }
 }
 
 async function parseMessageContent(

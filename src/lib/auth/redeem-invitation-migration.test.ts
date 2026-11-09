@@ -14,6 +14,13 @@ const tablesWithoutDomainData = new Set([
   "account_invitations",
   "member_presence",
   "pending_message_statuses",
+  // Inscrições de Web Push são POR APARELHO, não dado de negócio. Entrar numa
+  // conta compartilhada apaga a conta pessoal antiga (e o CASCADE leva as
+  // inscrições junto), o que é o comportamento certo: o aparelho passa a
+  // pertencer à conta nova e o usuário reativa o aviso lá. Bloquear a
+  // migração por causa de uma inscrição de push seria hostil — o usuário
+  // ficaria preso na conta antiga por causa de uma permissão de navegador.
+  "push_subscriptions",
 ]);
 
 function accountScopedTables(): Set<string> {
