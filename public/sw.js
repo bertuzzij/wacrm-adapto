@@ -154,34 +154,6 @@ self.addEventListener("fetch", (event) => {
 });
 
 /**
- * Web Push: ainda não há servidor de push (o alerta é disparado pelo
- * realtime do Supabase com a aba aberta). Este handler existe para o dia
- * em que houver, e porque um `push` sem handler faz o navegador mostrar
- * "site atualizado em segundo plano" — um aviso inútil e confuso.
- */
-self.addEventListener("push", (event) => {
-  let payload = {};
-  try {
-    payload = event.data ? event.data.json() : {};
-  } catch {
-    payload = {};
-  }
-
-  const title = payload.title || "AdaptoConect";
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body: payload.body || "",
-      icon: payload.icon || "/icons/icon-192.png",
-      // `badge` é monocromático no Android; o ícone colorido vira um
-      // quadrado branco na barra de status.
-      badge: "/icons/icon-192.png",
-      tag: payload.tag,
-      data: { url: payload.url || "/inbox" },
-    }),
-  );
-});
-
-/**
  * Web Push: o aviso que chega com o app FECHADO.
  *
  * O payload é montado no servidor (src/adapto/push/payload.ts) e assinado
