@@ -67,11 +67,29 @@ export function buildMediaPath(
   // "bin" rather than becoming "readme".
   const hasExt = /\.[^.]+$/.test(fileName);
   const ext = hasExt ? fileName.split(".").pop()!.toLowerCase() : "bin";
+  const stem = fileName.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9_-]+/g, "_");
+
+  // Cortar o começo do nome é o que apagava a unicidade.
+  //
+  // O mirror inbound monta o nome como `${mediaId}-${kind}-${stamp}` e o
+  // mediaId do WAHA é `waha_` + base64 do caminho — 72 caracteres, dos
+  // quais os PRIMEIROS ~30 são idênticos para todos os arquivos da mesma
+  // sessão (o base64 de `/api/files/<sessão>/` é constante). Um
+  // `.slice(0, 40)` mantinha justamente esse prefixo comum e descartava o
+  // trecho que distinguia um arquivo do outro: dois clientes diferentes
+  // gravavam o MESMO objeto e a imagem de um aparecia na conversa do
+  // outro.
+  //
+  // Preservar o FINAL resolve porque a parte variável do id (o nome do
+  // arquivo no WAHA) está no fim, e é ela que difere.
+  const MAX_BASE = 40;
   const safeBase =
-    fileName
-      .replace(/\.[^.]+$/, "")
-      .replace(/[^a-zA-Z0-9_-]+/g, "_")
-      .slice(0, 40) || "file";
+    stem.length <= MAX_BASE
+      ? stem || "file"
+      : // `_` + últimos caracteres: mantém o sufixo único e deixa claro
+        // que houve corte, para o nome não parecer aleatório.
+        `_${stem.slice(-(MAX_BASE - 1))}`;
+
   const dir = subfolder
     ? `account-${accountId}/${subfolder}`
     : `account-${accountId}`;
