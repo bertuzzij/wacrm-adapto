@@ -2402,6 +2402,24 @@
       "saveFailed": "Could not save",
       "saveSuccess": "Signature updated",
       "loadFailed": "Could not load the setting"
+    },
+    "pushNotifications": {
+      "title": "Phone notifications",
+      "description": "Get an alert even with the app CLOSED. This is what makes the phone buzz when a message arrives while you are not on the system.",
+      "toggleLabel": "Alert with the app closed",
+      "toggleDesc": "Uses Web Push. Every device must be enabled separately.",
+      "statusOn": "Active on this device.",
+      "statusOff": "Off on this device.",
+      "enableNow": "Enable on this phone",
+      "checking": "Checking…",
+      "unsupported": "This browser does not support background notifications.",
+      "unsupportedInsecure": "Notifications require HTTPS. Open the system over the secure address (https://), not a local IP.",
+      "unsupportedConfig": "The server has no push keys configured yet. Ask your administrator.",
+      "iosNeedsInstall": "On iPhone, notifications only work with the app installed to the Home Screen. Install it with the card above first, then come back.",
+      "enabledToast": "Notifications enabled on this device",
+      "disabledToast": "Notifications disabled on this device",
+      "permissionDenied": "The browser blocked notifications. Allow them for this site in the settings and try again.",
+      "failedToast": "Could not enable notifications"
     }
   },
   "SignupPage": {

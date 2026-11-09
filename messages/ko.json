@@ -2402,6 +2402,24 @@
       "saveFailed": "저장하지 못했습니다",
       "saveSuccess": "서명이 업데이트되었습니다",
       "loadFailed": "설정을 불러오지 못했습니다"
+    },
+    "pushNotifications": {
+      "title": "휴대폰 알림",
+      "description": "앱을 닫은 상태에서도 알림을 받습니다. 시스템을 열어두지 않아도 메시지가 오면 휴대폰이 울립니다.",
+      "toggleLabel": "앱을 닫아도 알림",
+      "toggleDesc": "Web Push를 사용합니다. 기기마다 따로 켜야 합니다.",
+      "statusOn": "이 기기에서 켜짐.",
+      "statusOff": "이 기기에서 꺼짐.",
+      "enableNow": "휴대폰에서 켜기",
+      "checking": "확인 중…",
+      "unsupported": "이 브라우저는 백그라운드 알림을 지원하지 않습니다.",
+      "unsupportedInsecure": "알림은 HTTPS가 필요합니다. 로컬 IP가 아닌 보안 주소(https://)로 접속하세요.",
+      "unsupportedConfig": "서버에 푸시 키가 설정되지 않았습니다. 관리자에게 알려주세요.",
+      "iosNeedsInstall": "iPhone에서는 홈 화면에 앱을 설치해야 알림이 작동합니다. 위 카드에서 먼저 설치한 후 다시 오세요.",
+      "enabledToast": "이 기기에서 알림이 켜졌습니다",
+      "disabledToast": "이 기기에서 알림이 꺼졌습니다",
+      "permissionDenied": "브라우저가 알림을 차단했습니다. 사이트 설정에서 허용한 후 다시 시도하세요.",
+      "failedToast": "알림을 켜지 못했습니다"
     }
   },
   "SignupPage": {

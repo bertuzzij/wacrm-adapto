@@ -2402,6 +2402,24 @@
       "saveFailed": "No se pudo guardar",
       "saveSuccess": "Firma actualizada",
       "loadFailed": "No se pudo cargar la configuración"
+    },
+    "pushNotifications": {
+      "title": "Notificaciones en el móvil",
+      "description": "Recibe un aviso incluso con la app CERRADA. Es lo que hace vibrar el móvil cuando llega un mensaje mientras no estás en el sistema.",
+      "toggleLabel": "Avisar con la app cerrada",
+      "toggleDesc": "Usa Web Push. Cada dispositivo debe activarse por separado.",
+      "statusOn": "Activo en este dispositivo.",
+      "statusOff": "Desactivado en este dispositivo.",
+      "enableNow": "Activar en el móvil",
+      "checking": "Comprobando…",
+      "unsupported": "Este navegador no admite notificaciones en segundo plano.",
+      "unsupportedInsecure": "Las notificaciones requieren HTTPS. Abre el sistema por la dirección segura (https://), no por IP local.",
+      "unsupportedConfig": "El servidor aún no tiene las claves de push configuradas. Avisa al administrador.",
+      "iosNeedsInstall": "En iPhone, las notificaciones solo funcionan con la app instalada en la pantalla de inicio. Instálala primero con la tarjeta de arriba y vuelve aquí.",
+      "enabledToast": "Notificaciones activadas en este dispositivo",
+      "disabledToast": "Notificaciones desactivadas en este dispositivo",
+      "permissionDenied": "El navegador bloqueó las notificaciones. Permítelas para este sitio en la configuración e inténtalo de nuevo.",
+      "failedToast": "No se pudieron activar las notificaciones"
     }
   },
   "SignupPage": {

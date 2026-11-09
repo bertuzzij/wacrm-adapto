@@ -2402,6 +2402,24 @@
       "saveFailed": "Não foi possível salvar",
       "saveSuccess": "Assinatura atualizada",
       "loadFailed": "Não foi possível carregar a configuração"
+    },
+    "pushNotifications": {
+      "title": "Notificações no celular",
+      "description": "Receba um aviso mesmo com o app FECHADO. É o que faz o celular apitar quando chega mensagem enquanto você não está com o sistema aberto.",
+      "toggleLabel": "Avisar com o app fechado",
+      "toggleDesc": "Usa Web Push. Cada aparelho precisa ser ativado separadamente.",
+      "statusOn": "Ativo neste aparelho.",
+      "statusOff": "Desligado neste aparelho.",
+      "enableNow": "Ativar no celular",
+      "checking": "Verificando…",
+      "unsupported": "Este navegador não suporta notificações em segundo plano.",
+      "unsupportedInsecure": "Notificações exigem HTTPS. Abra o sistema pelo endereço seguro (https://), não por IP local.",
+      "unsupportedConfig": "O servidor ainda não tem as chaves de push configuradas. Avise o administrador.",
+      "iosNeedsInstall": "No iPhone, notificação só funciona com o app instalado na Tela de Início. Instale primeiro pelo card acima e volte aqui.",
+      "enabledToast": "Notificações ativadas neste aparelho",
+      "disabledToast": "Notificações desativadas neste aparelho",
+      "permissionDenied": "O navegador bloqueou as notificações. Libere para este site nas configurações e tente de novo.",
+      "failedToast": "Não foi possível ativar as notificações"
     }
   },
   "SignupPage": {

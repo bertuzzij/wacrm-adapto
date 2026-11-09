@@ -25,6 +25,7 @@ import { Switch } from '@/components/ui/switch';
 import { SettingsPanelHead } from '@/components/settings/settings-panel-head';
 import { BrowserNotificationsCard } from '@/components/settings/browser-notifications-card';
 import { InstallAppCard } from '@/adapto/pwa/install-card';
+import { PushNotificationsCard } from '@/adapto/push/push-card';
 import {
   playNotificationSound,
   readSoundPref,
@@ -63,6 +64,11 @@ export function NotificationsPanel() {
           descobrir que tem de instalar. Colocar o card de notificação
           primeiro levaria a uma tela dizendo "não suportado" sem saída. */}
       <InstallAppCard />
+
+      {/* Push de verdade (app fechado). Fica logo depois da instalação
+          porque no iPhone só funciona instalado — a ordem conta a história
+          certa: instalar → ativar aviso no celular → ajustar aviso na aba. */}
+      <PushNotificationsCard />
 
       {/* Notificação do navegador: componente já existente, reaproveitado
           para não duplicar a lógica de permissão. */}
