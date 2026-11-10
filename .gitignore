@@ -89,3 +89,6 @@ backfill-backup.json
 backfill-verdict.json
 backfill-dryrun.json
 backfill-fix2.json
+
+# Backup local de dados (nunca versionar)
+scripts/.backup-*.json

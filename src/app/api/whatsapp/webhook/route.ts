@@ -1337,18 +1337,31 @@ async function findContactByGroupKey(
   accountId: string,
   groupKey: string
 ): Promise<ContactRow | null> {
+  // `.maybeSingle()` NÃO pode ser usado aqui.
+  //
+  // Ele lança quando a consulta devolve mais de uma linha. Enquanto
+  // existiram contatos duplicados de grupo (o bug que a migração 070
+  // corrige), a busca ERRAVA, esta função devolvia null, e o webhook
+  // concluía "não existe" e inseria mais um — um contato novo por
+  // mensagem. O erro era engolido pelo `catch` abaixo e só aparecia no
+  // log, então o ciclo se alimentava sozinho.
+  //
+  // Com `.order().limit(1)` a consulta sempre devolve no máximo uma linha
+  // e nunca falha por ambiguidade, mesmo que duplicatas voltem a existir.
   const { data, error } = await supabaseAdmin()
     .from('contacts')
     .select('*')
     .eq('account_id', accountId)
     .eq('phone', groupKey)
-    .maybeSingle()
+    .order('created_at', { ascending: true })
+    .limit(1)
 
   if (error) {
     console.error('[webhook] group contact lookup failed:', error.message)
     return null
   }
-  return data ?? null
+  const rows = (data ?? []) as ContactRow[]
+  return rows[0] ?? null
 }
 
 async function findContactByWaUserId(
