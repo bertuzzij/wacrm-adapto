@@ -21,6 +21,11 @@
 
 import { wahaBaseUrl, wahaSession } from '@/lib/whatsapp/waha';
 import { memberPhone, toGroupMembers, type GroupMember } from './members';
+import {
+  applyCrmContact,
+  loadCrmContactDirectory,
+} from './crm-directory';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 /** Quanto tempo um nome de grupo fica em cache. */
 const GROUP_NAME_TTL_MS = 10 * 60 * 1000;
@@ -62,9 +67,22 @@ export function clearGroupNameCache(): void {
  * A foto continua vindo por membro, mas agora sem bloquear a lista: os
  * nomes chegam na primeira resposta e as fotos entram depois (ver o
  * comentário de `withPictures`).
+ *
+ * ## Enriquecimento pelo CRM
+ *
+ * Além da agenda do WhatsApp, a lista cruza com a tabela `contacts` do
+ * próprio CRM (uma consulta, indexada por telefone). O nome que o
+ * atendente cadastrou vence o pushname — "Secretaria Silvana - Dr. Edson"
+ * diz mais que o nome que o contato escolheu para si. A foto vem SEMPRE
+ * do CRM: a do WhatsApp expira em ~2 dias.
+ *
+ * Chamadores com `db` fazem o enriquecimento; o sem (não há) manteria o
+ * comportamento antigo. `crm` em cache por conta evita reconsultar a
+ * cada abertura do seletor.
  */
 export async function fetchGroupMembers(
-  groupId: string
+  groupId: string,
+  options: { db?: SupabaseClient; accountId?: string } = {}
 ): Promise<GroupMember[]> {
   const cached = membersCache.get(groupId);
   if (cached && cached.expiresAt > Date.now()) return cached.members;
@@ -89,6 +107,25 @@ export async function fetchGroupMembers(
       participants,
       directory
     );
+
+    // Nomes e fotos do CRM (ver `crm-directory.ts`). Consulta única por
+    // conta; falha degrada para o comportamento anterior, sem erro.
+    if (options.db && options.accountId) {
+      const crm = await loadCrmContactDirectory(options.db, options.accountId);
+      if (crm.size > 0) {
+        for (const member of members) {
+          applyCrmContact(member, crm);
+        }
+        // Re-ordena: o nome do CRM muda a ordem alfabética calculada antes
+        // do enriquecimento.
+        members.sort((a, b) => {
+          if (a.name && b.name) return a.name.localeCompare(b.name);
+          if (a.name) return -1;
+          if (b.name) return 1;
+          return (a.phone || a.waId).localeCompare(b.phone || b.waId);
+        });
+      }
+    }
 
     membersCache.set(groupId, {
       members,

@@ -59,7 +59,13 @@ export async function GET(
       return NextResponse.json({ members: [] });
     }
 
-    const members = await fetchGroupMembers(groupJid);
+    // Enriquecimento pelo CRM: nome e foto que o atendente cadastrou. Sem
+    // isso a lista mostra o pushname do WhatsApp — ou só o número, para
+    // quem não está salvo na agenda do celular de ninguém.
+    const members = await fetchGroupMembers(groupJid, {
+      db: ctx.supabase,
+      accountId: ctx.accountId,
+    });
     return NextResponse.json({ members });
   } catch (err) {
     if (err instanceof UnauthorizedError) {
