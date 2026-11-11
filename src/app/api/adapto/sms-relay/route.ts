@@ -100,43 +100,49 @@ export async function POST(request: Request) {
     }
 
     // ------------------------------------------------------------
-    // Destinatário: o próprio número. Sai do whatsapp_config, que é a
-    // mesma fonte do webhook — assim o relay nunca depende de variável
-    // solta e herda a troca de número automaticamente.
+    // Destinatário: o próprio número.
+    //
+    // `whatsapp_config` NÃO tem coluna com o número — e não é o
+    // `phone_number_id` da Meta que mora ali: no modo WAHA este campo
+    // guarda o PRÓPRIO TELEFONE (verificado: "551699…", 13 dígitos), pois
+    // é assim que o bridge grava `chatIdToPhone(meId)` do evento.
     //
     // Leitura com service-role, sem sessão de usuário: o app do celular
     // fala com esta rota de fora do app, então NÃO há cookie Supabase —
     // o token do header É a autenticação. O `waha-webhook` segue o mesmo
-    // padrão. O config é único por conta (uma instalação = um número),
-    // então `limit(1)` já ordenado é suficiente.
+    // padrão. Config é único por conta; `.order().limit(1)` em vez de
+    // `maybeSingle`, que lança se duplicatas existirem (lição do bug dos
+    // contatos de grupo).
     // ------------------------------------------------------------
     const { data: configs, error: configError } = await supabaseAdmin()
       .from('whatsapp_config')
-      .select('account_id, display_phone_number, access_token, phone_number_id')
+      .select('phone_number_id, access_token')
       .order('created_at', { ascending: true })
       .limit(1)
 
-    const config = configs?.[0]
-    if (configError || !config?.display_phone_number) {
+    // Em WAHA o número é o phone_number_id; sem WAHA, a rota não se aplica
+    // (não há "mensagem para mim mesmo" fora do modo de pareamento).
+    const selfPhone = (configs?.[0]?.phone_number_id ?? '').replace(/\D/g, '');
+    if (configError || !selfPhone) {
       return NextResponse.json(
         { error: t('common.whatsappNotConfigured') },
         { status: 400 }
       );
     }
 
-    // Nota: `decrypt` espera o token cifrado do banco. No modo WAHA o
-    // `sendTextMessage` ignora os args Meta e usa `wahaSendText`, então o
-    // token nunca é usado de fato — mas o argumento é obrigatório, e
-    // passar o valor sem decifrar não é possível; cifra-se com o que há.
-    const accessToken = config.access_token
-      ? decrypt(config.access_token)
+    // Nota: no modo WAHA o `sendTextMessage` ignora os args Meta e usa
+    // `wahaSendText` — o token nunca é usado de fato. Em Meta, o token
+    // decifrado do banco seria o correto; como o relay só existe no modo
+    // WAHA, passar o valor decifrado mantém os dois caminhos honestos.
+    const accessToken = configs?.[0]?.access_token
+      ? decrypt(configs[0].access_token)
       : '';
 
     const message = formatSmsRelayMessage(smsBody, decision.code);
     const result = await sendTextMessage({
-      phoneNumberId: config.phone_number_id ?? '',
+      phoneNumberId: selfPhone,
       accessToken,
-      to: selfChatId(config.display_phone_number),
+      to: selfChatId(selfPhone),
       text: message,
     });
 
