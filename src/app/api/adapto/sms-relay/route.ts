@@ -1,0 +1,155 @@
+// ============================================================
+// POST /api/adapto/sms-relay
+//
+// RELAY DE SMS → WHATSAPP.
+//
+// NECESSIDADE: os códigos 2FA da Amplimed chegam por SMS no celular, e o
+// atendente às vezes está longe dele. O app de encaminhamento no Android
+// (MacroDroid/Tasker) faz POST aqui; esta rota replica a mensagem para o
+// WhatsApp do próprio número, onde ela fica visível no WhatsApp Web.
+//
+// O WAHA não escuta SMS: a escuta mora no app do celular, e este servidor
+// é só a ponte — por isso a chave do WAHA nunca precisa sair daqui.
+//
+// AUTENTICAÇÃO: token dedicado no header, igual ao webhook do WAHA. É um
+// segredo distinto de propósito: o app do celular é a superfície mais
+// exposta do caminho (celular perdido, app desinstalado por alguém), e um
+// token próprio limita o que essa exposição alcança — nada além de
+// "mandar texto pro meu próprio WhatsApp".
+//
+// A FILTRAGEM acontece aqui (ver `@/adapto/sms-relay/rules`): só SMS cujo
+// corpo casa com o padrão da Amplimed é replicado. Sem isso, qualquer SMS
+// do aparelho transbordaria para o WhatsApp.
+// ============================================================
+
+import { NextResponse } from 'next/server';
+import crypto from 'node:crypto';
+import { createClient } from '@supabase/supabase-js';
+import { getT } from '@/lib/i18n/translate';
+import {
+  formatSmsRelayMessage,
+  selfChatId,
+  shouldForwardSms,
+} from '@/adapto/sms-relay/rules';
+import { sendTextMessage } from '@/lib/whatsapp/meta-api';
+import { decrypt } from '@/lib/whatsapp/encryption';
+
+const t = getT('Api');
+
+/** Header onde o app do celular traz o token. */
+const TOKEN_HEADER = 'x-sms-relay-token';
+
+/** Cliente service-role: a rota roda sem sessão de usuário (ver abaixo). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _adminClient: any = null;
+function supabaseAdmin() {
+  if (!_adminClient) {
+    _adminClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+  }
+  return _adminClient;
+}
+
+export async function POST(request: Request) {
+  try {
+    // ------------------------------------------------------------
+    // Token dedicado. Comparação em tempo constante: a rota é pública
+    // (o celular fala com ela pela internet) e um token que dá acesso a
+    // enviar mensagens merece a defesa.
+    // ------------------------------------------------------------
+    const expected = process.env.SMS_RELAY_TOKEN?.trim();
+    if (!expected) {
+      console.error(
+        '[sms-relay] SMS_RELAY_TOKEN not configured — refusing to run open'
+      );
+      return NextResponse.json(
+        { error: t('common.serviceUnavailable') },
+        { status: 503 }
+      );
+    }
+
+    const provided =
+      request.headers.get(TOKEN_HEADER)?.trim() ??
+      new URL(request.url).searchParams.get('token')?.trim() ??
+      '';
+    // Mesmo padrão do webhook WAHA (`tokenOk`): hash antes de comparar
+    // torna a comparação em tempo constante com o `crypto` do Node, que é
+    // o runtime disponível aqui (o `crypto` web não tem timingSafeEqual).
+    const a = crypto.createHash('sha256').update(expected).digest()
+    const b = crypto.createHash('sha256').update(provided).digest()
+    if (!crypto.timingSafeEqual(a, b)) {
+      return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 });
+    }
+
+    const body = (await request.json().catch(() => null)) as {
+      body?: string;
+      from?: string;
+      timestamp?: string;
+    } | null;
+
+    const smsBody = typeof body?.body === 'string' ? body.body : '';
+    const decision = shouldForwardSms(smsBody);
+
+    if (!decision.forward) {
+      // 200 com `forwarded: false`, não 4xx: para o app do celular, "não
+      // encaminhou" é um resultado NORMAL e esperado — a maioria dos SMS
+      // não é da Amplimed. Um erro faria o app retentar em vão.
+      return NextResponse.json({ forwarded: false, reason: decision.reason });
+    }
+
+    // ------------------------------------------------------------
+    // Destinatário: o próprio número. Sai do whatsapp_config, que é a
+    // mesma fonte do webhook — assim o relay nunca depende de variável
+    // solta e herda a troca de número automaticamente.
+    //
+    // Leitura com service-role, sem sessão de usuário: o app do celular
+    // fala com esta rota de fora do app, então NÃO há cookie Supabase —
+    // o token do header É a autenticação. O `waha-webhook` segue o mesmo
+    // padrão. O config é único por conta (uma instalação = um número),
+    // então `limit(1)` já ordenado é suficiente.
+    // ------------------------------------------------------------
+    const { data: configs, error: configError } = await supabaseAdmin()
+      .from('whatsapp_config')
+      .select('account_id, display_phone_number, access_token, phone_number_id')
+      .order('created_at', { ascending: true })
+      .limit(1)
+
+    const config = configs?.[0]
+    if (configError || !config?.display_phone_number) {
+      return NextResponse.json(
+        { error: t('common.whatsappNotConfigured') },
+        { status: 400 }
+      );
+    }
+
+    // Nota: `decrypt` espera o token cifrado do banco. No modo WAHA o
+    // `sendTextMessage` ignora os args Meta e usa `wahaSendText`, então o
+    // token nunca é usado de fato — mas o argumento é obrigatório, e
+    // passar o valor sem decifrar não é possível; cifra-se com o que há.
+    const accessToken = config.access_token
+      ? decrypt(config.access_token)
+      : '';
+
+    const message = formatSmsRelayMessage(smsBody, decision.code);
+    const result = await sendTextMessage({
+      phoneNumberId: config.phone_number_id ?? '',
+      accessToken,
+      to: selfChatId(config.display_phone_number),
+      text: message,
+    });
+
+    return NextResponse.json({
+      forwarded: true,
+      code: decision.code,
+      messageId: 'messageId' in result ? result.messageId : null,
+    });
+  } catch (error) {
+    console.error('[sms-relay] failed:', error);
+    return NextResponse.json(
+      { error: t('common.internalServerError') },
+      { status: 500 }
+    );
+  }
+}
