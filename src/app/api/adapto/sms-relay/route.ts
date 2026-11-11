@@ -83,14 +83,40 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: t('common.unauthorized') }, { status: 401 });
     }
 
-    const body = (await request.json().catch(() => null)) as {
-      body?: string;
-      from?: string;
-      timestamp?: string;
-    } | null;
-
+    const rawBody = await request.text();
+    let body: { body?: string; from?: string; timestamp?: string } | null = null;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      // Corpo não é JSON — quase sempre o app configurado com o texto cru
+      // (`{sms_text}`) em vez do objeto JSON (`{"body": "{sms_text}"}`).
+      // Log explícito: sem esta linha, a falha é invisível dos dois lados
+      // (o app vê HTTP 200, o servidor não registra nada).
+      console.error(
+        `[sms-relay] body is not valid JSON (${rawBody.length} bytes) — the phone app is probably sending the raw text instead of {"body": "..."}`
+      );
+      return NextResponse.json(
+        { forwarded: false, reason: 'invalid-json' },
+        { status: 400 }
+      );
+    }
     const smsBody = typeof body?.body === 'string' ? body.body : '';
     const decision = shouldForwardSms(smsBody);
+
+    // Log da decisão, SEM o conteúdo (o corpo do SMS pode conter código e
+    // contexto pessoal; só comprimento e motivo bastam para diagnosticar).
+    //
+    // Este log existe por causa de uma falha real: o MacroDroid foi
+    // configurado com o corpo `{sms_text}` em vez de
+    // `{"body": "{sms_text}"}` — o servidor recebia texto cru, tratava
+    // como corpo vazio e respondia `forwarded: false` SEM LOG NENHUM. Do
+    // lado do app, a requisição parecia bem-sucedida. A depuração precisou
+    // de um vídeo da tela do celular; bastaria uma linha como
+    // `received 43 bytes, no-match` para apontar a causa.
+    const receivedBytes = smsBody.length;
+    console.log(
+      `[sms-relay] received ${receivedBytes} bytes, decision=${decision.reason}, code=${decision.code ? 'yes' : 'no'}`
+    );
 
     if (!decision.forward) {
       // 200 com `forwarded: false`, não 4xx: para o app do celular, "não
