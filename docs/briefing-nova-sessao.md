@@ -464,3 +464,32 @@ git config merge.conflictstyle zdiff3
 ```
 
 O `upstream` tem push **desabilitado** de propósito. Sempre `git push origin`.
+
+---
+
+## Relay SMS → WhatsApp (src/adapto/sms-relay)
+
+Existe um relay que replica SMS do celular do operador (códigos 2FA da
+Amplimed) para o WhatsApp dele mesmo. O app de encaminhamento no Android
+faz POST em `/api/adapto/sms-relay` com o header `x-sms-relay-token`
+(env: `SMS_RELAY_TOKEN`, dedidado — NÃO reutilize o segredo do webhook WAHA).
+
+Lições da construção, todas com custo real:
+
+- O WAHA não escuta SMS; a escuta é um app no Android. O servidor é só a ponte.
+- `whatsapp_config` não tem coluna com o número; em modo WAHA o número
+  mora em `phone_number_id` (o bridge grava `chatIdToPhone(meId)` lá).
+- Apps de encaminhamento NÃO expandem placeholder no campo Body do
+  webhook (nem MacroDroid nem o wizard em uso). O que salva o servidor é
+  ser tolerante: aceitar `{"body": …}`, corpo cru, e procurar o texto
+  recursivamente em qualquer campo do JSON — sempre passando pelo MESMO
+  filtro de padrão (o prefixo da Amplimed), que é a única porta.
+- O app prefixa "From : <número>" no template; o relay faz strip, mas só
+  se o resto casar com o padrão.
+- Carimbo de hora da mensagem entregue: `America/Sao_Paulo` EXPLICITO
+  (o servidor roda em UTC; `toLocaleString` sem timeZone mentia 3h).
+- `SMS_RELAY_DEBUG_REJECTS=true` (env, temporário) loga os 80 primeiros
+  bytes de corpos rejeitados — ligue para diagnosticar, desligue depois.
+- `.dockerignore` exclui testes: `next build` no Docker typecheca tudo o
+  que `COPY . .` traz, e um teste com erro de tipo (nunca executado em
+  produção) chegou a quebrar um deploy inteiro.
