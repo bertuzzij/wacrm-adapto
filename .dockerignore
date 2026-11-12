@@ -15,3 +15,14 @@ docker-compose*.yml
 .vscode
 .idea
 coverage
+
+# Testes nao pertencem a imagem de producao — e o `next build` do Docker
+# faz typecheck em TODO o diretorio copiado, inclusive em arquivos
+# untracked no momento do build. Um teste com erro de tipo (nunca
+# executado em producao) chegou a quebrar o deploy inteiro por causa
+# disso. Vitest continua rodando fora do Docker, na maquina e no CI.
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+.playwright-cli
