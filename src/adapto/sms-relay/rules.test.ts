@@ -85,10 +85,20 @@ describe('shouldForwardSms', () => {
 
 describe('formatSmsRelayMessage', () => {
   it('destaca o código numa linha própria', () => {
-    const out = formatSmsRelayMessage(REAL_BODIES[0], '308911', new Date('2026-11-11T12:01:00'));
+    const out = formatSmsRelayMessage(REAL_BODIES[0], '308911', new Date('2026-11-11T12:01:00-03:00'));
     expect(out).toContain('*Código Amplimed: 308911*');
     expect(out).toContain(REAL_BODIES[0]);
     expect(out).toContain('Recebido às');
+  });
+
+  // Regressão do relato: o horário aparecia em UTC (13:29) quando o
+  // relógio do operador marcava 10:29. O servidor roda em UTC dentro do
+  // Docker; o carimbo precisa de America/Sao_Paulo explícito.
+  it('carimba o horário no fuso de São Paulo, não no do servidor', () => {
+    // 14:29 UTC = 11:29 em São Paulo (UTC-3).
+    const out = formatSmsRelayMessage(REAL_BODIES[0], '308911', new Date('2026-11-11T14:29:00Z'));
+    expect(out).toContain('Recebido às 11/11, 11:29');
+    expect(out).not.toContain('14:29');
   });
 
   it('sem código, usa o cabeçalho genérico', () => {

@@ -67,6 +67,11 @@ export function shouldForwardSms(body: string | null | undefined): SmsForwardDec
  * O texto do SMS vai inteiro (contexto em caso de variação de formato),
  * e o código vem isolado numa linha própria em destaque — é o que se digita
  * com pressa na tela do computador.
+ *
+ * O horário é carimbado em `America/Sao_Paulo` EXPLICITAMENTE: o servidor
+ * roda em UTC dentro do Docker, e `toLocaleString('pt-BR')` sem timeZone
+ * usa o fuso do processo — os códigos apareceriam "recebidos às 13:29"
+ * quando eram 10:29 no relógio do operador.
  */
 export function formatSmsRelayMessage(
   body: string,
@@ -74,6 +79,7 @@ export function formatSmsRelayMessage(
   receivedAt = new Date()
 ): string {
   const stamp = receivedAt.toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
