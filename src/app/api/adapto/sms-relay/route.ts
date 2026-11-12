@@ -84,38 +84,49 @@ export async function POST(request: Request) {
     }
 
     const rawBody = await request.text();
-    let body: { body?: string; from?: string; timestamp?: string } | null = null;
+
+    // ------------------------------------------------------------
+    // Aceita DOIS formatos, porque a vida real mandou os dois:
+    //
+    //   1. JSON:  {"body": "<texto do sms>"}   — o formato canônico
+    //   2. Cru:   o próprio texto do SMS
+    //
+    // O formato cru existe porque o placeholder de variável do app do
+    // celular provou ser uma armadilha: MacroDroid usa `[sms_text]`, SMS
+    // Forwarder usa `{sms_text}`, e uma versão errada chega ao servidor
+    // como o LITERAL da variável (10 bytes, três testes seguidos). Recusar
+    // isso transforma um erro de configuração do app em código não
+    // entregue — o pior resultado para a necessidade original (receber o
+    // 2FA longe do celular).
+    //
+    // A regra de decisão (`shouldForwardSms`) é a mesma nos dois caminhos:
+    // só passa o que casa com o padrão da Amplimed. Aceitar corpo cru não
+    // abre a porta para SMS alheio — abre para o MESMO filtro.
+    // ------------------------------------------------------------
+    let smsBody = '';
+    let parseNote: string;
     try {
-      body = JSON.parse(rawBody);
+      const parsed = JSON.parse(rawBody) as {
+        body?: string;
+        from?: string;
+        timestamp?: string;
+      } | null;
+      smsBody = typeof parsed?.body === 'string' ? parsed.body : '';
+      parseNote = 'json';
     } catch {
-      // Corpo não é JSON — quase sempre o app configurado com o texto cru
-      // (`{sms_text}`) em vez do objeto JSON (`{"body": "{sms_text}"}`).
-      // Log explícito: sem esta linha, a falha é invisível dos dois lados
-      // (o app vê HTTP 200, o servidor não registra nada).
-      console.error(
-        `[sms-relay] body is not valid JSON (${rawBody.length} bytes) — the phone app is probably sending the raw text instead of {"body": "..."}`
-      );
-      return NextResponse.json(
-        { forwarded: false, reason: 'invalid-json' },
-        { status: 400 }
-      );
+      // Não é JSON: trata o corpo inteiro como o texto do SMS. Só faz
+      // sentido se houver conteúdo; um corpo vazio não decide nada.
+      smsBody = rawBody;
+      parseNote = 'raw-text';
     }
-    const smsBody = typeof body?.body === 'string' ? body.body : '';
+
     const decision = shouldForwardSms(smsBody);
 
     // Log da decisão, SEM o conteúdo (o corpo do SMS pode conter código e
-    // contexto pessoal; só comprimento e motivo bastam para diagnosticar).
-    //
-    // Este log existe por causa de uma falha real: o MacroDroid foi
-    // configurado com o corpo `{sms_text}` em vez de
-    // `{"body": "{sms_text}"}` — o servidor recebia texto cru, tratava
-    // como corpo vazio e respondia `forwarded: false` SEM LOG NENHUM. Do
-    // lado do app, a requisição parecia bem-sucedida. A depuração precisou
-    // de um vídeo da tela do celular; bastaria uma linha como
-    // `received 43 bytes, no-match` para apontar a causa.
-    const receivedBytes = smsBody.length;
+    // contexto pessoal; só comprimento, motivo e formato bastam para
+    // diagnosticar).
     console.log(
-      `[sms-relay] received ${receivedBytes} bytes, decision=${decision.reason}, code=${decision.code ? 'yes' : 'no'}`
+      `[sms-relay] received ${smsBody.length} bytes (${parseNote}), decision=${decision.reason}, code=${decision.code ? 'yes' : 'no'}`
     );
 
     if (!decision.forward) {
