@@ -52,6 +52,68 @@ function supabaseAdmin() {
   return _adminClient;
 }
 
+/** Profundidade máxima da busca recursiva — o payload do app é raso. */
+const MAX_EXTRACT_DEPTH = 6;
+
+/**
+ * Procura, recursivamente, um valor de texto que case com o padrão de um
+ * SMS da Amplimed.
+ *
+ * Existiu para encerrar a saga de placeholders: cada app de encaminhamento
+ * monta o corpo de um jeito (`{"body": …}` aqui, `{from, message, …}` no
+ * SMS Forwarder), e o placeholder de variável não era expandido por
+ * nenhum deles. Em vez de o servidor impor seu formato, ele procura o
+ * texto do SMS onde quer que o app o tenha colocado.
+ *
+ * Devolve o PRIMEIRO valor que casa — e é seguro: o que casa é, por
+ * definição, um SMS da Amplimed, que é o único conteúdo esta rota replica.
+ * Chaves como `token`, `secret`, `authorization` são puladas (um app
+ * mal-configurado pode colocar a própria credencial no corpo; nunca a
+ * devolvemos como se fosse mensagem).
+ */
+function extractSmsText(value: unknown, depth = 0): string | null {
+  if (depth > MAX_EXTRACT_DEPTH) return null;
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed && shouldForwardSms(trimmed).forward) return trimmed;
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = extractSmsText(item, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  if (value && typeof value === 'object') {
+    const SKIP_KEYS = new Set([
+      'token', 'secret', 'authorization', 'password', 'apikey', 'api_key',
+    ]);
+    // Campos de TEXTO primeiro, chaves de metadado por último — o texto do
+    // SMS tem nomes óbvios (`message`, `body`, `text`, `msg`); procurar
+    // neles antes reduz a chance de casar num campo decorativo.
+    const entries = Object.entries(value as Record<string, unknown>).sort(
+      ([a], [b]) => {
+        const texty = (k: string) =>
+          ['message', 'body', 'text', 'msg', 'content'].includes(k.toLowerCase())
+            ? 0
+            : 1;
+        return texty(a) - texty(b);
+      },
+    );
+    for (const [key, child] of entries) {
+      if (SKIP_KEYS.has(key.toLowerCase())) continue;
+      const found = extractSmsText(child, depth + 1);
+      if (found) return found;
+    }
+  }
+
+  return null;
+}
+
 export async function POST(request: Request) {
   try {
     // ------------------------------------------------------------
@@ -86,36 +148,40 @@ export async function POST(request: Request) {
     const rawBody = await request.text();
 
     // ------------------------------------------------------------
-    // Aceita DOIS formatos, porque a vida real mandou os dois:
+    // Aceita o formato que vier, porque os apps reais provaram não haver
+    // UM formato:
     //
-    //   1. JSON:  {"body": "<texto do sms>"}   — o formato canônico
-    //   2. Cru:   o próprio texto do SMS
+    //   1. {"body": "<texto>"}          — o formato canônico desta rota
+    //   2. o texto do SMS cru           — sem envelope nenhum
+    //   3. o JSON nativo do app         — SMS Forwarder manda o pacote
+    //                                     completo dele ({from, message,
+    //                                     date, sentTime, ...})
     //
-    // O formato cru existe porque o placeholder de variável do app do
-    // celular provou ser uma armadilha: MacroDroid usa `[sms_text]`, SMS
-    // Forwarder usa `{sms_text}`, e uma versão errada chega ao servidor
-    // como o LITERAL da variável (10 bytes, três testes seguidos). Recusar
-    // isso transforma um erro de configuração do app em código não
-    // entregue — o pior resultado para a necessidade original (receber o
-    // 2FA longe do celular).
+    // O caso 3 é o que encerrou a saga de placeholders: MacroDroid não
+    // expandia variável no campo, SMS Forwarder mandava o placeholder
+    // LITERAL (`[msg]`, 5 bytes) mesmo inserido pelo seletor. Em vez de
+    // continuar caçando o token certo de cada app, o servidor extrai o
+    // texto de onde ele estiver — procurando recursivamente o primeiro
+    // valor string que case com o padrão da Amplimed.
     //
-    // A regra de decisão (`shouldForwardSms`) é a mesma nos dois caminhos:
-    // só passa o que casa com o padrão da Amplimed. Aceitar corpo cru não
-    // abre a porta para SMS alheio — abre para o MESMO filtro.
+    // O FILTRO continua sendo a única porta: o que não casa com o padrão
+    // da Amplimed nunca é replicado, não importa o envelope.
     // ------------------------------------------------------------
     let smsBody = '';
     let parseNote: string;
     try {
-      const parsed = JSON.parse(rawBody) as {
-        body?: string;
-        from?: string;
-        timestamp?: string;
-      } | null;
-      smsBody = typeof parsed?.body === 'string' ? parsed.body : '';
+      const parsed = JSON.parse(rawBody) as unknown;
+      const extracted = extractSmsText(parsed);
+      // O campo canônico `body` tem prioridade quando é texto; sem ele, o
+      // que a extração achou no resto do payload manda.
+      const canonical =
+        parsed && typeof parsed === 'object' && typeof (parsed as { body?: unknown }).body === 'string'
+          ? ((parsed as { body: string }).body || extracted || '')
+          : (extracted ?? '');
+      smsBody = canonical;
       parseNote = 'json';
     } catch {
-      // Não é JSON: trata o corpo inteiro como o texto do SMS. Só faz
-      // sentido se houver conteúdo; um corpo vazio não decide nada.
+      // Não é JSON: trata o corpo inteiro como o texto do SMS.
       smsBody = rawBody;
       parseNote = 'raw-text';
     }
