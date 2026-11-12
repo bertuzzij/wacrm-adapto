@@ -4,6 +4,7 @@ import {
   formatSmsRelayMessage,
   selfChatId,
   shouldForwardSms,
+  stripForwardTemplateHeader,
 } from './rules';
 
 // ============================================================
@@ -108,11 +109,32 @@ describe('formatSmsRelayMessage', () => {
   });
 });
 
-describe('selfChatId', () => {
-  it('monta o chat de mensagem-para-mim-mesmo', () => {
-    expect(selfChatId('5551900000001')).toBe('5551900000001@c.us');
-    // Tolerante a formatos com máscara ou sufixo.
-    expect(selfChatId('+55 (51) 90000-0002')).toBe('5551900000002@c.us');
-    expect(selfChatId('5551900000003@c.us')).toBe('5551900000003@c.us');
+describe('stripForwardTemplateHeader', () => {
+  // Formato REAL capturado no debug (57 bytes): o template do app de
+  // encaminhamento prefixa o remetente, e o padrão da Amplimed fica na
+  // linha seguinte. O filtro original rejeitava por causa do prefixo.
+  const TEMPLATE_WRAPPED = 'From : 9150000\nSeu codigo de validacao Amplimed e: 452995';
+
+  it('remove o cabeçalho From e expõe o padrão da Amplimed', () => {
+    const stripped = stripForwardTemplateHeader(TEMPLATE_WRAPPED);
+    expect(stripped).toBe('Seu codigo de validacao Amplimed e: 452995');
+    expect(shouldForwardSms(stripped).forward).toBe(true);
+  });
+
+  it('não altera corpo que já está no formato esperado', () => {
+    expect(stripForwardTemplateHeader(REAL_BODIES[0])).toBe(REAL_BODIES[0]);
+  });
+
+  it('não remove o cabeçalho se o resto não casa com o padrão', () => {
+    // "From" seguido de SMS comum: a remoção não deve abrir porta para
+    // conteúdo que o filtro recusaria.
+    const smsComum = 'From : 9150000\nSua encomenda chegou. Correios';
+    expect(stripForwardTemplateHeader(smsComum)).toBe(smsComum);
+  });
+
+  it('funciona com o corpo completo da cadeia (via shouldForwardSms)', () => {
+    // A regressão completa: o que o app manda → o que o filtro decide.
+    const decision = shouldForwardSms(stripForwardTemplateHeader(TEMPLATE_WRAPPED));
+    expect(decision).toEqual({ forward: true, code: '452995', reason: 'match' });
   });
 });

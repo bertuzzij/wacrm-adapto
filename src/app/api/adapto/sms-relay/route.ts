@@ -30,6 +30,7 @@ import {
   formatSmsRelayMessage,
   selfChatId,
   shouldForwardSms,
+  stripForwardTemplateHeader,
 } from '@/adapto/sms-relay/rules';
 import { sendTextMessage } from '@/lib/whatsapp/meta-api';
 import { decrypt } from '@/lib/whatsapp/encryption';
@@ -178,11 +179,13 @@ export async function POST(request: Request) {
         parsed && typeof parsed === 'object' && typeof (parsed as { body?: unknown }).body === 'string'
           ? ((parsed as { body: string }).body || extracted || '')
           : (extracted ?? '');
-      smsBody = canonical;
+      // O template do app de encaminhamento prefixa "From : …" na primeira
+      // linha; o padrão da Amplimed está depois dela.
+      smsBody = stripForwardTemplateHeader(canonical);
       parseNote = 'json';
     } catch {
       // Não é JSON: trata o corpo inteiro como o texto do SMS.
-      smsBody = rawBody;
+      smsBody = stripForwardTemplateHeader(rawBody);
       parseNote = 'raw-text';
     }
 

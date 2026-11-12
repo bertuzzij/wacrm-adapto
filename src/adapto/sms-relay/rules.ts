@@ -37,6 +37,31 @@ export interface SmsForwardDecision {
 }
 
 /**
+ * Remove a linha de cabeçalho que os apps de encaminhamento adicionam.
+ *
+ * Vários apps (o de encaminhamento em uso incluído) montam o corpo a
+ * partir de um template próprio:
+ *
+ *   From : 9150000
+ *   Seu codigo de validacao Amplimed e: 452995
+ *
+ * O padrão da Amplimed está na SEGUNDA linha, e o `startsWith` do filtro
+ * falharia por causa do "From : …" na primeira — foi exatamente o que
+ * aconteceu com o SMS real de 57 bytes que o debug capturou.
+ *
+ * A remoção é conservadora: só uma linha inicial de remetente, só se o
+ * resto contiver o padrão da Amplimed. Qualquer outro formato passa
+ * intacto e continua sendo recusado pelo filtro.
+ */
+export function stripForwardTemplateHeader(body: string): string {
+  const text = body.trim();
+  const match = text.match(/^From\s*:\s*[^\n]*\n([\s\S]+)$/i);
+  if (!match) return text;
+  const rest = match[1].trim();
+  return shouldForwardSms(rest).forward ? rest : text;
+}
+
+/**
  * Decide se um SMS deve ser replicado, e extrai o código.
  *
  * A extração é separada do encaminhamento porque o código é a ÚNICA parte
