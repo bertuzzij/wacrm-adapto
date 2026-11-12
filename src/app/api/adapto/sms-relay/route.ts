@@ -129,6 +129,20 @@ export async function POST(request: Request) {
       `[sms-relay] received ${smsBody.length} bytes (${parseNote}), decision=${decision.reason}, code=${decision.code ? 'yes' : 'no'}`
     );
 
+    // DIAGNÓSTICO TEMPORÁRIO (remover após estabilizar): quando o corpo não
+    // casa com o padrão, registra o começo dele — sem isso, um app que
+    // envia o texto errado é invisível e a depuração depende de adivinhação.
+    // Controlado por env var para não virar hábito.
+    if (
+      !decision.forward &&
+      process.env.SMS_RELAY_DEBUG_REJECTS === 'true' &&
+      smsBody.length > 0
+    ) {
+      console.warn(
+        `[sms-relay] REJECTED body (${smsBody.length} bytes): ${smsBody.slice(0, 80)}`
+      );
+    }
+
     if (!decision.forward) {
       // 200 com `forwarded: false`, não 4xx: para o app do celular, "não
       // encaminhou" é um resultado NORMAL e esperado — a maioria dos SMS
