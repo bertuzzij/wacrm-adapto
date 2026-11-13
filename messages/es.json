@@ -3170,5 +3170,13 @@
     "iosNotifyBlocked": "Las notificaciones en iPhone solo funcionan con la app instalada en la pantalla de inicio. Instálala primero y luego activa los avisos.",
     "dismiss": "Ahora no",
     "dismissedHint": "Puedes instalar más tarde en Configuración → Notificaciones."
+  },
+  "Composer": {
+    "formatBar": {
+      "label": "Formato de WhatsApp"
+    },
+    "preview": {
+      "label": "Vista previa"
+    }
   }
 }

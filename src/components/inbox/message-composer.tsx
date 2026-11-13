@@ -43,6 +43,13 @@ import { EmojiButton } from "@/adapto/emoji-picker/picker";
 import { insertEmojiAtSelection } from "@/adapto/emoji-picker/insert-emoji";
 import { extractPastedFile } from "@/adapto/inbox/paste";
 import { MentionButton } from "@/adapto/whatsapp-groups/mention-button";
+import {
+  wrapSelection,
+  wrapKeyShortcut,
+  type FormatterKind,
+} from "@/adapto/whatsapp-formatting/editing";
+import { FormatBar } from "@/adapto/whatsapp-formatting/format-bar";
+import { MessagePreview } from "@/adapto/whatsapp-formatting/message-preview";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -304,21 +311,71 @@ export function MessageComposer({
     [text, adjustHeight]
   );
 
+  // Formatação (barra): aplica/toggle o marcador na seleção atual. Mesma
+  // mecânica do emoji — o foco volta com o cursor no lugar, com o setTimeout
+  // esperando o re-render aplicar o texto.
+  const handleFormat = useCallback(
+    (kind: FormatterKind) => {
+      const el = textareaRef.current;
+      if (!el) return;
+      const start = el.selectionStart ?? text.length;
+      const end = el.selectionEnd ?? text.length;
+
+      const result = wrapSelection({ text, start, end }, kind);
+      if (!result.changed) return;
+
+      setText(result.text);
+
+      window.setTimeout(() => {
+        const node = textareaRef.current;
+        if (!node) return;
+        node.focus();
+        // Mantém a seleção interna (o conteúdo formatado), para encadear
+        // outro formato ou digitar por cima.
+        node.setSelectionRange(
+          result.caret - result.selectedLength,
+          result.caret,
+        );
+        adjustHeight();
+      }, 0);
+    },
+    [text, adjustHeight]
+  );
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      // Atalhos de formatação: Ctrl+B/I/E e Ctrl+Shift+X. Interceptados
+      // AQUI e não na barra, porque o evento de teclado só existe no campo
+      // com foco.
+      if (e.ctrlKey || e.metaKey) {
+        const result = wrapKeyShortcut(
+          { text, start: e.currentTarget.selectionStart, end: e.currentTarget.selectionEnd },
+          e,
+        );
+        if (result.changed) {
+          e.preventDefault();
+          setText(result.text);
+          window.setTimeout(() => {
+            const node = textareaRef.current;
+            if (!node) return;
+            node.setSelectionRange(result.caret, result.caret + result.selectedLength);
+          }, 0);
+          return;
+        }
+      }
+
       if (e.key === "Enter" && !e.shiftKey && enterSends) {
         e.preventDefault();
         handleSend();
       }
     },
-    [handleSend, enterSends]
+    [handleSend, enterSends, text]
   );
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       setText(e.target.value);
-      adjustHeight();
-    },
+      adjustHeight();    },
     [adjustHeight]
   );
 
@@ -817,6 +874,11 @@ export function MessageComposer({
               cursor pelo handler abaixo. */}
           <EmojiButton onPick={handlePickEmoji} disabled={inputsDisabled || busy} />
 
+          {/* Formatação do WhatsApp: aplica os marcadores no texto. Os
+              atalhos (Ctrl+B/I/E, Ctrl+Shift+X) ficam no onKeyDown do
+              textarea. */}
+          <FormatBar onFormat={handleFormat} disabled={inputsDisabled || busy} />
+
           {/* Menção: só em grupo, onde há outros participantes. Insere
               `@telefone ` no cursor — é o formato que o WhatsApp entende. */}
           {isGroup && (
@@ -901,6 +963,10 @@ export function MessageComposer({
       {/* A dica "Toque em ✨ para redigir" saiu do rodapé: repetia, embaixo
           do campo, o que o próprio botão ✨ na barra já mostra. Em notebook
           ela ainda ficava deslocada do texto por causa do recuo fixo. */}
+
+      {/* Live preview: como a bolha vai renderizar. Só aparece quando há
+          marcador no texto — sem formatação é ruído, não ajuda. */}
+      <MessagePreview text={text} />
 
       {/* Interactive-message builder dialog. */}
       <Dialog open={interactiveOpen} onOpenChange={setInteractiveOpen}>

@@ -3170,5 +3170,13 @@
     "iosNotifyBlocked": "Notifications on iPhone only work with the app installed to the Home Screen. Install it first, then turn on alerts.",
     "dismiss": "Not now",
     "dismissedHint": "You can install later in Settings → Notifications."
+  },
+  "Composer": {
+    "formatBar": {
+      "label": "WhatsApp formatting"
+    },
+    "preview": {
+      "label": "Preview"
+    }
   }
 }
