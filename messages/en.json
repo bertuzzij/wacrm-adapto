@@ -1715,7 +1715,8 @@
       "removeDialogDesc": "Remove <bold>{name}</bold> from the account? They'll be signed out of this account and given a fresh personal account on their next sign-in. Their login isn't deleted.",
       "cancel": "Cancel",
       "removing": "Removing...",
-      "removeBtn": "Remove member"
+      "removeBtn": "Remove member",
+      "addMember": "Add member"
     },
     "invite": {
       "inviteCreated": "Invite created",
@@ -2444,6 +2445,28 @@
       "successToast": "Password reset for {name}",
       "failed": "Could not reset the password",
       "networkError": "Network error"
+    },
+    "createMember": {
+      "addMember": "Add member",
+      "title": "Create member",
+      "desc": "The member signs in with the email and the temporary password you set here. No email confirmation.",
+      "nameLabel": "Name",
+      "namePlaceholder": "Member name",
+      "emailLabel": "Email",
+      "emailPlaceholder": "member@company.com",
+      "roleLabel": "Role",
+      "passwordLabel": "Temporary password",
+      "regenerate": "Generate",
+      "passwordHint": "Share this password through a safe channel. The member can change it after signing in.",
+      "deliveryHint": "Send the email + password to the member (WhatsApp, phone call…). They sign in right away — no confirmation email.",
+      "cancel": "Cancel",
+      "submit": "Create member",
+      "invalidEmail": "Invalid email address",
+      "passwordTooShort": "Password must be at least 6 characters",
+      "createdToast": "Member {email} created",
+      "createFailed": "Could not create the member",
+      "emailTaken": "This email is already registered",
+      "networkError": "Network error"
     }
   },
   "SignupPage": {
@@ -3003,7 +3026,9 @@
         "loadFailed": "Failed to load members",
         "updateFailed": "Failed to update member",
         "roleInvalid": "'role' must be one of owner, admin, agent, viewer",
-        "useTransferOwnership": "Use POST /api/account/transfer-ownership to promote a member to owner"
+        "useTransferOwnership": "Use POST /api/account/transfer-ownership to promote a member to owner",
+        "createFailed": "Could not create the member",
+        "emailTaken": "This email is already registered"
       },
       "nameMustBeString": "'name' must be a string",
       "nameEmpty": "Account name cannot be empty",

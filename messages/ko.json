@@ -1715,7 +1715,8 @@
       "removeDialogDesc": "<bold>{name}</bold>을(를) 이 계정에서 제거하시겠습니까? 이 계정에서 로그아웃되며 다음 로그인 시 새로운 개인 계정이 발급됩니다. 로그인 정보 자체는 삭제되지 않습니다.",
       "cancel": "취소",
       "removing": "제거 중...",
-      "removeBtn": "멤버 제거"
+      "removeBtn": "멤버 제거",
+      "addMember": "구성원 추가"
     },
     "invite": {
       "inviteCreated": "초대가 생성되었습니다",
@@ -2444,6 +2445,28 @@
       "successToast": "{name}님의 비밀번호가 재설정되었습니다",
       "failed": "비밀번호를 재설정할 수 없습니다",
       "networkError": "네트워크 오류"
+    },
+    "createMember": {
+      "addMember": "구성원 추가",
+      "title": "구성원 생성",
+      "desc": "구성원은 여기서 설정한 이메일과 임시 비밀번호로 로그인합니다. 이메일 확인 없음.",
+      "nameLabel": "이름",
+      "namePlaceholder": "구성원 이름",
+      "emailLabel": "이메일",
+      "emailPlaceholder": "member@company.com",
+      "roleLabel": "역할",
+      "passwordLabel": "임시 비밀번호",
+      "regenerate": "생성",
+      "passwordHint": "이 비밀번호를 안전한 채널로 전달하세요. 구성원은 로그인 후 변경할 수 있습니다.",
+      "deliveryHint": "이메일 + 비밀번호를 구성원에게 전달하세요(WhatsApp, 전화 등). 바로 로그인됩니다 — 확인 이메일 없음.",
+      "cancel": "취소",
+      "submit": "구성원 생성",
+      "invalidEmail": "유효하지 않은 이메일 주소",
+      "passwordTooShort": "비밀번호는 6자 이상이어야 합니다",
+      "createdToast": "구성원 {email} 생성됨",
+      "createFailed": "구성원을 생성할 수 없습니다",
+      "emailTaken": "이 이메일은 이미 등록되어 있습니다",
+      "networkError": "네트워크 오류"
     }
   },
   "SignupPage": {
@@ -3003,7 +3026,9 @@
         "loadFailed": "팀원 목록을 불러오지 못했습니다",
         "updateFailed": "팀원을 업데이트하지 못했습니다",
         "roleInvalid": "역할은 owner, admin, agent, viewer 중 하나여야 합니다",
-        "useTransferOwnership": "팀원을 소유자로 승격하려면 POST /api/account/transfer-ownership을 사용하세요"
+        "useTransferOwnership": "팀원을 소유자로 승격하려면 POST /api/account/transfer-ownership을 사용하세요",
+        "createFailed": "구성원을 생성할 수 없습니다",
+        "emailTaken": "이 이메일은 이미 등록되어 있습니다"
       },
       "nameMustBeString": "이름은 문자열이어야 합니다",
       "nameEmpty": "계정 이름은 비워둘 수 없습니다",

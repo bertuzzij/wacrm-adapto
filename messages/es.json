@@ -1715,7 +1715,8 @@
       "removeDialogDesc": "¿Quitar a <bold>{name}</bold> de la cuenta? Se cerrará su sesión en esta cuenta y recibirá una cuenta personal nueva en su próximo inicio de sesión. Su acceso no se elimina.",
       "cancel": "Cancelar",
       "removing": "Quitando...",
-      "removeBtn": "Quitar miembro"
+      "removeBtn": "Quitar miembro",
+      "addMember": "Añadir miembro"
     },
     "invite": {
       "inviteCreated": "Invitación creada",
@@ -2444,6 +2445,28 @@
       "successToast": "Contraseña restablecida para {name}",
       "failed": "No se pudo restablecer la contraseña",
       "networkError": "Error de red"
+    },
+    "createMember": {
+      "addMember": "Añadir miembro",
+      "title": "Crear miembro",
+      "desc": "El miembro entra con el email y la contraseña temporal que definas aquí. Sin confirmación de email.",
+      "nameLabel": "Nombre",
+      "namePlaceholder": "Nombre del miembro",
+      "emailLabel": "Email",
+      "emailPlaceholder": "miembro@empresa.com",
+      "roleLabel": "Rol",
+      "passwordLabel": "Contraseña temporal",
+      "regenerate": "Generar",
+      "passwordHint": "Comparte esta contraseña por un canal seguro. El miembro puede cambiarla después de entrar.",
+      "deliveryHint": "Envía el email + contraseña al miembro (WhatsApp, llamada…). Entra directamente — sin email de confirmación.",
+      "cancel": "Cancelar",
+      "submit": "Crear miembro",
+      "invalidEmail": "Dirección de correo inválida",
+      "passwordTooShort": "La contraseña debe tener al menos 6 caracteres",
+      "createdToast": "Miembro {email} creado",
+      "createFailed": "No se pudo crear el miembro",
+      "emailTaken": "Este email ya está registrado",
+      "networkError": "Error de red"
     }
   },
   "SignupPage": {
@@ -3003,7 +3026,9 @@
         "loadFailed": "Error al cargar los miembros",
         "updateFailed": "Error al actualizar el miembro",
         "roleInvalid": "El rol debe ser owner, admin, agent o viewer",
-        "useTransferOwnership": "Usa POST /api/account/transfer-ownership para promover a un miembro a propietario"
+        "useTransferOwnership": "Usa POST /api/account/transfer-ownership para promover a un miembro a propietario",
+        "createFailed": "No se pudo crear el miembro",
+        "emailTaken": "Este email ya está registrado"
       },
       "nameMustBeString": "El nombre debe ser un texto",
       "nameEmpty": "El nombre de la cuenta no puede estar vacío",
