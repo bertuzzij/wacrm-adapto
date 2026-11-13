@@ -2428,6 +2428,22 @@
       "disabledToast": "Notifications disabled on this device",
       "permissionDenied": "The browser blocked notifications. Allow them for this site in the settings and try again.",
       "failedToast": "Could not enable notifications"
+    },
+    "adminPassword": {
+      "resetPassword": "Reset password",
+      "title": "Reset password for {name}",
+      "desc": "Define a new password for {email}. They will be signed out everywhere and use this password to sign in again.",
+      "passwordLabel": "New password",
+      "confirmLabel": "Confirm new password",
+      "warning": "This signs the member out of all devices. Share the password through a safe channel and ask them to change it after signing in.",
+      "cancel": "Cancel",
+      "submit": "Reset password",
+      "passwordTooShort": "Password must be at least 6 characters",
+      "passwordsMismatch": "Passwords do not match",
+      "passwordRequired": "Type a password",
+      "successToast": "Password reset for {name}",
+      "failed": "Could not reset the password",
+      "networkError": "Network error"
     }
   },
   "SignupPage": {
@@ -2956,7 +2972,14 @@
       "unknownError": "Unknown error",
       "invalidRequestBody": "Invalid request body",
       "titleEmpty": "title cannot be empty",
-      "insertFailed": "insert failed"
+      "insertFailed": "insert failed",
+      "invalidEmail": "Invalid email address",
+      "passwordTooShort": "Password must be at least 6 characters",
+      "passwordsMismatch": "Passwords do not match",
+      "passwordRequired": "Type a password",
+      "ownPasswordUseProfile": "Use your profile settings to change your own password",
+      "userNotFound": "User not found in this account",
+      "serviceUnavailable": "Service temporarily unavailable"
     },
     "account": {
       "apiKeys": {

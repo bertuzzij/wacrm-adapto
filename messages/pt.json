@@ -2428,6 +2428,22 @@
       "disabledToast": "Notificações desativadas neste aparelho",
       "permissionDenied": "O navegador bloqueou as notificações. Libere para este site nas configurações e tente de novo.",
       "failedToast": "Não foi possível ativar as notificações"
+    },
+    "adminPassword": {
+      "resetPassword": "Redefinir senha",
+      "title": "Redefinir senha de {name}",
+      "desc": "Defina uma nova senha para {email}. O membro será deslogado de todos os aparelhos e usará esta senha para entrar novamente.",
+      "passwordLabel": "Nova senha",
+      "confirmLabel": "Confirmar nova senha",
+      "warning": "Isto desloga o membro de todos os aparelhos. Compartilhe a senha por um canal seguro e peça para trocá-la após entrar.",
+      "cancel": "Cancelar",
+      "submit": "Redefinir senha",
+      "passwordTooShort": "A senha deve ter pelo menos 6 caracteres",
+      "passwordsMismatch": "As senhas não conferem",
+      "passwordRequired": "Digite uma senha",
+      "successToast": "Senha redefinida para {name}",
+      "failed": "Não foi possível redefinir a senha",
+      "networkError": "Erro de rede"
     }
   },
   "SignupPage": {
@@ -2956,7 +2972,14 @@
       "unknownError": "Erro desconhecido",
       "invalidRequestBody": "Corpo da requisição inválido",
       "titleEmpty": "O título não pode ficar vazio",
-      "insertFailed": "falha ao inserir"
+      "insertFailed": "falha ao inserir",
+      "invalidEmail": "Endereço de email inválido",
+      "passwordTooShort": "A senha deve ter pelo menos 6 caracteres",
+      "passwordsMismatch": "As senhas não conferem",
+      "passwordRequired": "Digite uma senha",
+      "ownPasswordUseProfile": "Use as configurações do seu perfil para trocar a própria senha",
+      "userNotFound": "Usuário não encontrado nesta conta",
+      "serviceUnavailable": "Serviço temporariamente indisponível"
     },
     "account": {
       "apiKeys": {

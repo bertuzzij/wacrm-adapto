@@ -25,6 +25,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
+  KeyRound,
   Loader2,
   Mail,
   MailX,
@@ -73,6 +74,7 @@ import {
   PresenceDot,
 } from '@/components/presence/presence-dot';
 import { InviteMemberDialog } from './invite-member-dialog';
+import { ResetPasswordDialog } from './admin-password-dialog';
 import { SettingsPanelHead } from './settings-panel-head';
 import { ROLE_META } from './role-meta';
 
@@ -136,6 +138,7 @@ export function MembersTab() {
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [removingMember, setRemovingMember] = useState<Member | null>(null);
+  const [resetTarget, setResetTarget] = useState<Member | null>(null);
   const [pendingMemberAction, setPendingMemberAction] = useState<string | null>(
     null,
   );
@@ -465,6 +468,25 @@ export function MembersTab() {
                         <Trash2 className="size-4" />
                       </Button>
                     )}
+
+                    {/* Redefinição de senha pelo owner (migração 071).
+                        Independentemente do email do Supabase: o owner
+                        define uma senha nova e o membro re-loga com ela.
+                        Same guards as Remove: owner-only, never on the
+                        owner row, never on yourself. */}
+                    {canManageMembers && !isOwnerRow && !isSelf && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setResetTarget(member)}
+                        disabled={isBusy}
+                        aria-label={t('resetPassword')}
+                        title={t('resetPassword')}
+                        className="border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      >
+                        <KeyRound className="size-4" />
+                      </Button>
+                    )}
                   </div>
                 </li>
               );
@@ -610,6 +632,18 @@ export function MembersTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {resetTarget && (
+        <ResetPasswordDialog
+          target={{
+            user_id: resetTarget.user_id,
+            full_name: resetTarget.full_name,
+            email: resetTarget.email,
+          }}
+          onClose={() => setResetTarget(null)}
+          onDone={loadEverything}
+        />
+      )}
     </section>
   );
 }

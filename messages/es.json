@@ -2428,6 +2428,22 @@
       "disabledToast": "Notificaciones desactivadas en este dispositivo",
       "permissionDenied": "El navegador bloqueó las notificaciones. Permítelas para este sitio en la configuración e inténtalo de nuevo.",
       "failedToast": "No se pudieron activar las notificaciones"
+    },
+    "adminPassword": {
+      "resetPassword": "Restablecer contraseña",
+      "title": "Restablecer contraseña de {name}",
+      "desc": "Define una nueva contraseña para {email}. El miembro será desconectado de todos los dispositivos y usará esta contraseña para entrar.",
+      "passwordLabel": "Nueva contraseña",
+      "confirmLabel": "Confirmar nueva contraseña",
+      "warning": "Esto desconecta al miembro de todos los dispositivos. Comparte la contraseña por un canal seguro y pídele cambiarla después de entrar.",
+      "cancel": "Cancelar",
+      "submit": "Restablecer contraseña",
+      "passwordTooShort": "La contraseña debe tener al menos 6 caracteres",
+      "passwordsMismatch": "Las contraseñas no coinciden",
+      "passwordRequired": "Escribe una contraseña",
+      "successToast": "Contraseña restablecida para {name}",
+      "failed": "No se pudo restablecer la contraseña",
+      "networkError": "Error de red"
     }
   },
   "SignupPage": {
@@ -2956,7 +2972,14 @@
       "unknownError": "Error desconocido",
       "invalidRequestBody": "Cuerpo de la solicitud no válido",
       "titleEmpty": "El título no puede estar vacío",
-      "insertFailed": "error al insertar"
+      "insertFailed": "error al insertar",
+      "invalidEmail": "Dirección de correo inválida",
+      "passwordTooShort": "La contraseña debe tener al menos 6 caracteres",
+      "passwordsMismatch": "Las contraseñas no coinciden",
+      "passwordRequired": "Escribe una contraseña",
+      "ownPasswordUseProfile": "Usa la configuración de tu perfil para cambiar tu propia contraseña",
+      "userNotFound": "Usuario no encontrado en esta cuenta",
+      "serviceUnavailable": "Servicio temporalmente no disponible"
     },
     "account": {
       "apiKeys": {
