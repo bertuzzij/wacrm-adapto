@@ -342,6 +342,40 @@ a porta da healthcheck.
 Os IPs, o domínio e o hostname reais ficam no `.env.local` e na configuração do
 servidor — **não os escreva aqui nem em qualquer arquivo versionado.**
 
+### O IP do homelab muda (e como reconhecer o sintoma)
+
+O homelab pega IP por DHCP e **a rede local inteira pode trocar** — já
+aconteceu (a rede `192.168.3.x` virou `192.168.18.x` de uma hora para outra,
+sem ninguém mexer em nada). O IP que estava funcionando ontem pode não
+existir hoje.
+
+**Sintoma inconfundível:**
+
+- `ssh` para o homelab dá **Connection timed out**, e `ping` perde 100%
+- **MAS o app em produção continua respondendo pela web** (a página de login
+  abre, o health endpoint responde)
+
+Essa combinação — web viva, SSH morto — significa rede/IP, não aplicação.
+NÃO vá depurar o container nem o deploy pipeline: o container está saudável
+atrás do túnel Cloudflare, que não depende do IP da LAN.
+
+**O que fazer:**
+
+1. Descubra a rede atual da sua máquina (`Get-NetIPAddress` no Windows —
+   o seu IPv4 de Ethernet mostra o prefixo da rede local).
+2. Candidate o homelab no prefixo novo (varra a faixa com `ping` ou
+   consulte a lista de DHCP do roteador — o hostname do homelab fica no
+   `.env.local` do servidor, junto dos demais dados de rede).
+3. O SSH usa as **mesmas chaves de sempre** — elas não mudam com o IP.
+4. Feito isso, o deploy segue o ciclo normal (`save` → `scp` → `load` →
+   `compose up -d --force-recreate`).
+
+**Registro do episódio (2026-11-11):** três deploys ficaram presos um dia
+inteiro por causa disso — formatação de texto, enriquecimento das menções e
+o push v2. O app continuou no ar o tempo todo; só o caminho de deploy tinha
+morrido. Verificar "o app responde pela web?" antes de qualquer outra coisa
+teria poupado o dia.
+
 **Verificação de que o deploy pegou:** compare o MD5 de um chunk dentro do container
 com o do build local. Os IDs de imagem divergem após `save`/`load`, então comparar
 `docker images` não prova nada.
