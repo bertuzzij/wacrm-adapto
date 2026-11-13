@@ -126,6 +126,139 @@ export function wrapSelection(
   };
 }
 
+// ============================================================
+// Lista de itens (o "- " do WhatsApp).
+//
+// A lista do WhatsApp NÃO é formatação no fio: `- item` viaja como texto
+// puro e é o app do celular que desenha o marcador. Diferente de *negrito*,
+// que viaja com o marcador dentro da mensagem.
+//
+// Por isso aqui o trabalho é só ajudar a DIGITAR:
+//
+//   - `startListItem` insere `- ` no início da linha do cursor (ou nas
+//     linhas da seleção, transformando cada uma em item);
+//   - `continueListOnEnter` decide o que o Enter faz dentro de uma lista:
+//     continuar com o próximo `- ` ou encerrar a lista (linha vazia).
+//
+// ============================================================
+
+/** Prefixo do item de lista, como o WhatsApp espera. */
+export const LIST_PREFIX = '- ';
+
+/** A linha é um item de lista? */
+export function isListItem(line: string): boolean {
+  return /^- /.test(line);
+}
+
+/** A linha está vazia (só espaços)? Lista termina nela. */
+function isBlank(line: string): boolean {
+  return line.trim() === '';
+}
+
+/** Início da linha que contém a posição. */
+function lineStart(text: string, position: number): number {
+  const nl = text.lastIndexOf('\n', position - 1);
+  return nl === -1 ? 0 : nl + 1;
+}
+
+/** Conteúdo da linha que contém a posição (sem o \n). */
+function lineOf(text: string, position: number): string {
+  const start = lineStart(text, position);
+  const nl = text.indexOf('\n', start);
+  return text.slice(start, nl === -1 ? text.length : nl);
+}
+
+export interface ListInsertResult {
+  text: string;
+  caret: number;
+  changed: boolean;
+}
+
+/**
+ * Transforma a(s) linha(s) da seleção em itens de lista.
+ *
+ * Com seleção multi-linha, cada linha vira um item (linhas já marcadas
+ * não recebem prefixo duplicado). Com cursor sem seleção, só a linha do
+ * cursor é afetada. Toggle: todas as linhas já sendo itens remove o
+ * prefixo de todas.
+ */
+export function startListItem(selection: TextSelection): ListInsertResult {
+  const { text } = selection;
+  let { start, end } = selection;
+
+  const selStart = lineStart(text, start);
+  const endLine = lineOf(text, end);
+  const selEnd = end + (endLine.length - lineOf(text, end).length);
+
+  // Linhas envolvidas: da linha do início da seleção até a do fim.
+  const blockStart = lineStart(text, start);
+  const blockText = text.slice(blockStart, Math.max(selEnd, end));
+  const lines = blockText.split('\n');
+
+  const allItems = lines.every((l) => isListItem(l) || isBlank(l));
+  const anyItem = lines.some((l) => isListItem(l));
+
+  const transformed = lines.map((line) => {
+    if (isBlank(line)) return line;
+    if (allItems && anyItem) return line.slice(LIST_PREFIX.length);
+    if (isListItem(line)) return line;
+    return LIST_PREFIX + line;
+  });
+
+  const replaced = transformed.join('\n');
+  const changedText =
+    text.slice(0, blockStart) + replaced + text.slice(blockStart + blockText.length);
+
+  const delta = replaced.length - blockText.length;
+  return {
+    text: changedText,
+    // Cursor volta ao fim do conteúdo da linha em que a seleção terminava.
+    caret: end + delta,
+    changed: true,
+  };
+}
+
+/**
+ * O que o Enter faz dentro de uma lista.
+ *
+ * Devolve `null` quando o Enter deve se comportar normalmente (quebra de
+ * linha simples — inclusive fora de lista).
+ *
+ * Casos:
+ *   - linha vazia na lista → sai da lista (só a quebra, sem novo item);
+ *   - linha de item com conteúdo → continua a lista com `- ` pronto.
+ */
+export function continueListOnEnter(
+  text: string,
+  caret: number,
+): ListInsertResult | null {
+  const line = lineOf(text, caret);
+  if (!isListItem(line)) return null;
+
+  const content = line.slice(LIST_PREFIX.length).trim();
+
+  // Item vazio: Enter encerra a lista — remove o `- ` solto e quebra a
+  // linha limpa. É o que o WhatsApp faz: Enter num item vazio sai.
+  if (content === '') {
+    const lineStartPos = lineStart(text, caret);
+    const before = text.slice(0, lineStartPos);
+    const after = text.slice(lineStartPos + line.length);
+    return {
+      text: `${before}${after}`,
+      caret: lineStartPos,
+      changed: true,
+    };
+  }
+
+  // Item com conteúdo: continua a lista.
+  const insert = `\n${LIST_PREFIX}`;
+  return {
+    text: text.slice(0, caret) + insert + text.slice(caret),
+    caret: caret + insert.length,
+    changed: true,
+  };
+}
+
 /** Atalho de teclado → formatter. `null` quando a tecla não é atalho. */
 export function shortcutFor(e: {
   key: string;

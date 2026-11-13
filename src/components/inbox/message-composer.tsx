@@ -46,6 +46,8 @@ import { MentionButton } from "@/adapto/whatsapp-groups/mention-button";
 import {
   wrapSelection,
   wrapKeyShortcut,
+  startListItem,
+  continueListOnEnter,
   type FormatterKind,
 } from "@/adapto/whatsapp-formatting/editing";
 import { FormatBar } from "@/adapto/whatsapp-formatting/format-bar";
@@ -342,8 +344,54 @@ export function MessageComposer({
     [text, adjustHeight]
   );
 
+  // Lista: transforma a(s) linha(s) da seleção em itens `- `, ou remove o
+  // prefixo se já são todos itens (toggle). Mesma mecânica de foco/cursor
+  // da barra de formatação.
+  const handleFormatList = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? text.length;
+    const end = el.selectionEnd ?? text.length;
+
+    const result = startListItem({ text, start, end });
+    if (!result.changed) return;
+
+    setText(result.text);
+
+    window.setTimeout(() => {
+      const node = textareaRef.current;
+      if (!node) return;
+      node.focus();
+      node.setSelectionRange(result.caret, result.caret);
+      adjustHeight();
+    }, 0);
+  }, [text, adjustHeight]);
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      // Enter dentro de lista: continua com `- ` no item seguinte, ou sai
+      // da lista quando o item está vazio — o comportamento do WhatsApp.
+      // Antes dos atalhos e do Enter-to-send: lista tem prioridade sobre
+      // enviar, porque quem está escrevendo uma lista não quer enviar no
+      // primeiro Enter.
+      if (e.key === "Enter" && !e.shiftKey) {
+        const listResult = continueListOnEnter(
+          text,
+          e.currentTarget.selectionStart,
+        );
+        if (listResult) {
+          e.preventDefault();
+          setText(listResult.text);
+          window.setTimeout(() => {
+            const node = textareaRef.current;
+            if (!node) return;
+            node.setSelectionRange(listResult.caret, listResult.caret);
+            adjustHeight();
+          }, 0);
+          return;
+        }
+      }
+
       // Atalhos de formatação: Ctrl+B/I/E e Ctrl+Shift+X. Interceptados
       // AQUI e não na barra, porque o evento de teclado só existe no campo
       // com foco.
@@ -369,7 +417,7 @@ export function MessageComposer({
         handleSend();
       }
     },
-    [handleSend, enterSends, text]
+    [handleSend, enterSends, text, adjustHeight]
   );
 
   const handleChange = useCallback(
@@ -877,7 +925,11 @@ export function MessageComposer({
           {/* Formatação do WhatsApp: aplica os marcadores no texto. Os
               atalhos (Ctrl+B/I/E, Ctrl+Shift+X) ficam no onKeyDown do
               textarea. */}
-          <FormatBar onFormat={handleFormat} disabled={inputsDisabled || busy} />
+          <FormatBar
+            onFormat={handleFormat}
+            onList={handleFormatList}
+            disabled={inputsDisabled || busy}
+          />
 
           {/* Menção: só em grupo, onde há outros participantes. Insere
               `@telefone ` no cursor — é o formato que o WhatsApp entende. */}

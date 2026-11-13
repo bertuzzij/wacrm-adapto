@@ -12,7 +12,7 @@
 // porque o evento precisa existir no campo com foco.
 // ============================================================
 
-import { Bold, Italic, Strikethrough, Code } from 'lucide-react';
+import { Bold, Italic, Strikethrough, Code, List } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { cn } from '@/lib/utils';
@@ -28,10 +28,13 @@ const BAR: Array<{ kind: FormatterKind; icon: typeof Bold; hint: string }> = [
 
 export function FormatBar({
   onFormat,
+  onList,
   disabled,
 }: {
   /** Aplica o formatter no texto do composer. */
   onFormat: (kind: FormatterKind) => void;
+  /** Insere/alternar item de lista na linha do cursor. */
+  onList: () => void;
   disabled?: boolean;
 }) {
   const t = useTranslations('Composer.formatBar');
@@ -65,6 +68,27 @@ export function FormatBar({
           <Icon className="h-3.5 w-3.5" />
         </button>
       ))}
+
+      {/* Lista é o caso à parte: no WhatsApp ela é TEXTO (`- item`), não
+          formatação no fio — por isso não é um FormatterKind. O botão
+          insere o prefixo; Enter dentro da lista continua os itens. */}
+      <button
+        type="button"
+        onMouseDown={(e) => {
+          e.preventDefault();
+        }}
+        onClick={onList}
+        disabled={disabled}
+        aria-label={t('list')}
+        title={t('list')}
+        className={cn(
+          'inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors',
+          'hover:bg-muted hover:text-foreground',
+          'disabled:cursor-not-allowed disabled:opacity-40',
+        )}
+      >
+        <List className="h-3.5 w-3.5" />
+      </button>
     </div>
   );
 }
