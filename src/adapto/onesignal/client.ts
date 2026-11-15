@@ -33,11 +33,7 @@
  * duas vezes lança. Por isso há a guarda de singleton abaixo.
  */
 
-import {
-  ONESIGNAL_SW_PATH,
-  ONESIGNAL_SW_SCOPE,
-  onesignalAppId,
-} from './config'
+import { onesignalAppId } from './config'
 import { isSubscriptionUsable, type SubscriptionState } from './subscription'
 
 /** URL oficial do SDK (a mesma que o painel fornece no snippet). */
@@ -67,22 +63,15 @@ interface OneSignalPushSubscription {
 }
 
 interface OneSignalClient {
+  /**
+   * Só `appId` e `allowLocalhostAsSecureOrigin` são usados de propósito.
+   * Ver o comentário longo em `initOneSignal()`: opções de prompt, service
+   * worker e notifyButton são do PAINEL (Typical Site) e são ignoradas se
+   * passadas aqui.
+   */
   init(options: {
     appId: string
-    serviceWorkerPath?: string
-    serviceWorkerParam?: { scope: string }
     allowLocalhostAsSecureOrigin?: boolean
-    notifyButton?: { enable: boolean }
-    /**
-     * O prompt automático é do painel, mas o SDK aceita a configuração aqui
-     * também. Desligamos para o pedido de permissão acontecer SÓ no toque do
-     * usuário — exigência do iOS e forma de não queimar a permissão.
-     */
-    promptOptions?: {
-      slidedown?: {
-        prompts?: Array<{ type: string; autoPrompt: boolean; delay?: unknown }>
-      }
-    }
   }): Promise<void>
   login(externalId: string): Promise<void>
   logout(): Promise<void>
@@ -160,26 +149,41 @@ export function initOneSignal(): Promise<OneSignalClient | null> {
 
       const oneSignal = await ready
 
+      // ATENÇÃO — este init tem que continuar mínimo.
+      //
+      // A app está configurada no painel como **Typical Site**, e a doc do
+      // OneSignal é explícita:
+      //
+      //   "Init options only work with Custom Code Setup. Otherwise, these
+      //    are configured in the OneSignal dashboard."
+      //
+      //   "Mixing the two does not work: dashboard path fields do not apply
+      //    to Custom Code, and `serviceWorkerPath` does not apply to Typical
+      //    Site."
+      //
+      // A primeira versão daqui passava `serviceWorkerPath`,
+      // `serviceWorkerParam`, `promptOptions` e `notifyButton`. Em Typical
+      // Site todos foram IGNORADOS — e o efeito foi cruel: o SDK voltou a
+      // procurar o worker na raiz (`/OneSignalSDKWorker.js`, 404), não
+      // registrou nada, e a inscrição nunca aconteceu. O sintoma que o
+      // usuário viu foi "ativei e a welcome notification não chegou".
+      //
+      // Quem manda no caminho do worker é o PAINEL:
+      //   Advanced Push Settings → Customize service worker paths and filenames
+      //     Path to service worker files      = /push/onesignal/
+      //     Service worker filename           = OneSignalSDKWorker.js
+      //     Service worker registration scope = /push/onesignal/
+      //
+      // Consequência que não é óbvia: o prompt automático também é do
+      // painel. Se "Auto prompt" estiver ligado lá, ele dispara sozinho e
+      // queima a permissão (no Chrome uma negativa é permanente, no iOS um
+      // pedido fora de gesto nem aparece).
       await oneSignal.init({
         appId,
-        serviceWorkerPath: ONESIGNAL_SW_PATH,
-        serviceWorkerParam: { scope: ONESIGNAL_SW_SCOPE },
         // Em `next dev` o app roda em http://localhost, que o Chrome trata
-        // como origem segura; o SDK exige o opt-in explícito mesmo assim.
+        // como origem segura, mas o SDK exige o opt-in explícito. Não é uma
+        // opção de dashboard, então fica no código.
         allowLocalhostAsSecureOrigin: true,
-        // O sino flutuante do OneSignal é redundante: o projeto já tem um
-        // card de notificações em Configurações, e dois controles para a
-        // mesma coisa confundem (foi o problema dos dois switches no
-        // passado).
-        notifyButton: { enable: false },
-        // Nada de prompt automático. O pedido sai do botão, no toque — é o
-        // único caminho que funciona no iOS e o único que não queima a
-        // permissão no Chrome.
-        promptOptions: {
-          slidedown: {
-            prompts: [{ type: 'push', autoPrompt: false }],
-          },
-        },
       })
 
       return oneSignal

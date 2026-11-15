@@ -143,7 +143,7 @@ describe('o service worker do OneSignal não disputa o escopo da raiz', () => {
     expect(config).toMatch(/ONESIGNAL_SW_SCOPE\s*=\s*'\/push\/onesignal\/'/)
   })
 
-  it('o caminho do worker é relativo, como o SDK exige', () => {
+  it('o caminho do worker é relativo, como o painel exibe', () => {
     expect(config).toMatch(/ONESIGNAL_SW_PATH\s*=\s*'push\/onesignal\/OneSignalSDKWorker\.js'/)
   })
 
@@ -158,5 +158,41 @@ describe('o service worker do OneSignal não disputa o escopo da raiz', () => {
     // Sem o incremento, um PWA já instalado continua no worker antigo.
     const sw = read('public/sw.js')
     expect(sw).toMatch(/CACHE_VERSION\s*=\s*["']v3["']/)
+  })
+})
+
+describe('init() não passa opções que o Typical Site ignora', () => {
+  const client = stripComments(read('src/adapto/onesignal/client.ts'))
+
+  /**
+   * O bug que isto impede, e que custou um deploy.
+   *
+   * A app está configurada no painel como Typical Site. A doc do OneSignal:
+   *
+   *   "Init options only work with Custom Code Setup."
+   *   "Mixing the two does not work: ... `serviceWorkerPath` does not apply
+   *    to Typical Site."
+   *
+   * A primeira versão passava `serviceWorkerPath` junto com
+   * `serviceWorkerParam`. Em Typical Site os dois foram IGNORADOS: o SDK
+   * voltou para o padrão de raiz (`/OneSignalSDKWorker.js`, 404), não
+   * registrou worker nenhum, e a inscrição nunca aconteceu. Do ponto de
+   * vista do usuário: "ativei e a welcome notification não chegou", sem
+   * erro visível — as opções erradas não falham, elas somem.
+   */
+  it.each([
+    ['serviceWorkerPath', /serviceWorkerPath\s*:/],
+    ['serviceWorkerParam', /serviceWorkerParam\s*:/],
+    ['promptOptions', /promptOptions\s*:/],
+    ['notifyButton', /notifyButton\s*:/],
+  ])('não passa %s no init()', (_name, pattern) => {
+    expect(client).not.toMatch(pattern)
+  })
+
+  it('passa apenas appId e allowLocalhostAsSecureOrigin', () => {
+    // Se um dia a app virar Custom Code, estas opções passam a valer — e
+    // este teste deve ser trocado junto, não contornado.
+    expect(client).toMatch(/allowLocalhostAsSecureOrigin:\s*true/)
+    expect(client).toMatch(/appId,/)
   })
 })

@@ -38,13 +38,22 @@
  * faz o registro do worker falhar em silêncio.
  */
 
-/** Subpasta do worker do OneSignal. Nunca mover sem seguir a migração da doc. */
+/**
+ * Subpasta do worker do OneSignal.
+ *
+ * **Estas duas constantes NÃO são passadas ao SDK.** Elas existem como
+ * documentação executável do que precisa estar configurado no painel, e os
+ * testes leem daqui. A app é **Typical Site**, e nesse modo a doc é
+ * explícita: `serviceWorkerPath` no `init()` é ignorado — quem manda é
+ * *Advanced Push Settings → Customize service worker paths and filenames*.
+ *
+ * (A primeira versão passava essas constantes no `init()`. O SDK ignorou,
+ * voltou a procurar o worker na raiz, achou 404 e nunca registrou nada — o
+ * sintoma foi "ativei e a welcome notification não chegou".)
+ */
 export const ONESIGNAL_SW_SCOPE = '/push/onesignal/'
 
-/**
- * Caminho relativo (SEM barra inicial) que o SDK espera em `init`.
- * O SDK resolve isso a partir da raiz do site.
- */
+/** Caminho relativo do worker, como aparece no painel (sem barra inicial). */
 export const ONESIGNAL_SW_PATH = 'push/onesignal/OneSignalSDKWorker.js'
 
 /**
