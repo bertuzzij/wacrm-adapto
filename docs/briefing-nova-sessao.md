@@ -85,6 +85,10 @@ Um fork do **wacrm** (CRM de WhatsApp em Next.js) adaptado para:
 | Importação de nome/foto de contato | `src/adapto/contact-sync/` |
 | Sino de não-lidas, status, toasts | `src/adapto/inbox/` |
 | Botões/lista interativos com fallback para enquete/texto | `src/adapto/waha-interactive/` |
+| Criação de membro com senha temporária (sem convite/email) | `src/app/api/admin/users/create/`, `supabase/migrations/072_*` |
+| Owner redefine senha de membro (desloga o membro) | `src/app/api/admin/users/password/`, `supabase/migrations/071_*` |
+| Postgres service-role com IPv4 garantido (pooler) | `src/lib/db/service-db.ts` |
+| Formatação de texto WhatsApp no composer | `src/adapto/whatsapp-formatting/`, `src/lib/inbox/whatsapp-format.tsx` |
 
 **Ambiente de produção:** conta individual com **1 pessoa** no papel `owner`.
 Instância WAHA: tier **CORE**, engine **GOWS**.
@@ -104,8 +108,8 @@ de preferência:
 2. **Ponto de extensão que o upstream já prevê** (ex.: `isWahaMode()`) — zero conflito.
 3. **Edição mínima num arquivo do upstream** — conflito baixo, mas real.
 
-Medido hoje: **75 arquivos, +7814/−167 linhas** contra o upstream. Fora de
-`src/adapto/`, `messages/`, `docs/` e `scripts/`, são **44 arquivos**. Toda edição em
+O diff contra o upstream cresce a cada semana — **NÃO confie em números
+aqui, meça com os comandos abaixo**. O princípio não muda: toda edição em
 arquivo do upstream deve ter motivo e ser mínima.
 
 Comando para ver o que é só seu:
@@ -445,6 +449,11 @@ Estas foram escolhas conscientes, não acidentes:
 | Push é por **aparelho**, não por usuário | A mesma pessoa atende no desktop e no celular; cada um tem endpoint próprio. Uma coluna no perfil representaria um só |
 | Push é enviado por **conta**, não por usuário | O aviso é "chegou mensagem"; qualquer pessoa da equipe pode atender |
 | No iPhone só funciona com o app instalado | WebKit entrega Web Push apenas para app na Tela de Início (iOS 16.4+). Não é escolha nossa — o card explica em vez de oferecer um switch que falharia |
+| Membros entram com **senha temporária criada pelo owner**, não por convite/link | O convite dependia de email entregue e do Site URL correto do Supabase; com o painel errado, o membro ficava travado. Agora: owner cria com email+senha, membro entra e troca a própria senha por updateUser |
+| Owner redefinir senha de membro **desloga o membro de todos os aparelhos** | Senha nova sem deslogar é redefinição de nomes: quem tinha acesso continua com o acesso velho |
+| Owner **não** redefine a própria senha pela rota admin | A rota apagaria a própria sessão dele; o caminho é Configurações → Perfil (updateUser) |
+| Papel **owner nunca é criável** por admin_create_member | Uma conta tem um dono; transferência de ownership é outro fluxo (transfer-ownership) |
+| Relay SMS aceita **o formato que vier** (JSON, cru, template do app) | Cada app de encaminhamento monta o corpo de um jeito e nenhum expande placeholder no Body do webhook; recusar formato seria travar o operador longe do celular |
 
 ---
 
@@ -477,6 +486,28 @@ Estas foram escolhas conscientes, não acidentes:
 - **Scripts `.mjs` que usam dependência CommonJS** (ex.: `web-push`) precisam de
   `import * as x from 'pkg'` — `import x from 'pkg'` falha com "does not provide an
   export named 'default'" tanto no Turbopack quanto no Node ESM.
+- **Postgres do Supabase (`db.<ref>.supabase.co`) publica só AAAA** nesta
+  instalação — zero registro A. O container de produção não tem rota IPv6:
+  conexão direta morre com `ENETUNREACH`. Use o pooler IPv4 oficial
+  (`aws-0-us-east-1.pooler.supabase.com`) com usuário no formato
+  `postgres.<ref>`. O helper `src/lib/db/service-db.ts` (`withServiceDb`)
+  recusa o host direto com uma mensagem que diz qual URL configurar.
+- **`auth.users` é escrevível via `SUPABASE_DB_URL`** — a URL aponta para o
+  Postgres que o próprio GoTrue usa. UPDATE em `encrypted_password` com
+  bcrypt (`crypt(…, gen_salt('bf', 10))`) é byte-compatível e o login
+  funciona na hora. A senha em claro morre dentro da função SQL.
+- **INSERT explícito em `auth.users` não herda o default de `id`** — gere
+  `gen_random_uuid()` nos VALUES (sem isso: `23502 null in column "id"`).
+  E o `instance_id` deve vir de uma linha existente — escrever o literal
+  dispara o scanner de segredos (UUID hex = "tunnel id" para o scanner).
+- **O trigger 017 bootstrap cria profile + conta pessoal** para todo
+  INSERT em `auth.users`. Funções administrativas aproveitam o trigger e
+  depois movem o profile para a conta certa e apagam a conta pessoal
+  órfã — em vez de duplicar a lógica de bootstrap.
+- **Cada app de encaminhamento SMS usa um placeholder diferente e nenhum
+  expande no campo Body do webhook** (MacroDroid: `[sms_text]`, o wizard
+  em uso: `{msg}`). A porta robusta é o servidor aceitar múltiplos
+  formatos e filtrar pelo padrão do conteúdo, não pelo remetente.
 
 ---
 
@@ -498,6 +529,54 @@ git config merge.conflictstyle zdiff3
 ```
 
 O `upstream` tem push **desabilitado** de propósito. Sempre `git push origin`.
+
+---
+
+## Administração de membros e senhas (migrações 071/072)
+
+Dois fluxos que substituem o convite por link (que dependia de email
+entregue e do Site URL correto do Supabase):
+
+| Fluxo | Rota | Função SQL |
+| --- | --- | --- |
+| Owner cria membro (email + senha temporária) | `POST /api/admin/users/create` | `admin_create_member` (072) |
+| Owner redefine senha de membro | `POST /api/admin/users/password` | `admin_set_user_password` (071) |
+
+Regras que a UI e as rotas impõem (não contornar):
+
+- **Papel**: só `owner` da conta chama as duas rotas; o membro-alvo deve
+  pertencer à MESMA conta (o escopo vem de `profiles.account_id`).
+- **Rate limit**: 5/15min (reset) e 10/15min (criar) por owner.
+- **Senha**: piso de 6, validado por `validatePassword`
+  (`src/adapto/admin-password/rules.ts`) — a mesma função na rota e no
+  diálogo. Não duplique o piso em outro lugar.
+- **Deslogar**: redefinir senha apaga sessions e refresh tokens do membro
+  (é a política — a senha nova vale imediatamente).
+- **Hash**: gerado DENTRO do banco (`crypt`/pgcrypto, bcrypt cost 10). A
+  senha em claro existe só no body HTTPS da chamada e dentro da função
+  SQL — nunca em log, nunca em parâmetro ecoado.
+- **Owner não se auto-gerencia por essas rotas**: a própria senha vai pelo
+  perfil (updateUser) — a rota recusa o próprio email.
+- **O trigger 017 cria profile + conta pessoal** ao inserir em
+  `auth.users`; `admin_create_member` aproveita isso, move o profile para
+  a conta do owner e apaga a conta pessoal órfã — bootstrap em um lugar só.
+
+O fluxo de convite (`/join/<token>`, `account_invitations`) e o callback
+(`next=/join`) continuam no código para links já enviados, mas **não há
+mais UI que crie convites**. O email de reset do Supabase volta a
+funcionar quando o Site URL do painel apontar para o domínio de produção.
+
+### Postgres direto: regra do pooler IPv4
+
+As duas rotas usam `withServiceDb()` (`src/lib/db/service-db.ts`). O host
+direto `db.<ref>.supabase.co` só tem AAAA — o container de produção não
+tem IPv6. O `SUPABASE_DB_URL` do servidor deve apontar para o pooler
+IPv4 (`aws-0-us-east-1.pooler.supabase.com`), com o usuário no formato
+`postgres.<ref>` — o próprio painel do Supabase mostra a string pronta
+em Project Settings → Database → Connection string → "Session pooler".
+
+`withServiceDb` recusa o host direto com uma mensagem dizendo exatamente
+isso. Não "conserte" o erro voltando ao host direto.
 
 ---
 
