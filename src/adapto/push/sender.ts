@@ -1,69 +1,43 @@
-// `web-push` é CommonJS e não expõe `export default` quando consumido pelo
-// Turbopack em rota de API — o import nomeado é o único que resolve. O
-// namespace inteiro vem em `webpush`.
-import * as webpush from 'web-push'
-import type { PushSubscription as WebPushSubscription } from 'web-push'
 import { supabaseAdmin } from '@/lib/automations/admin-client'
+import {
+  isOneSignalConfigured,
+  notificationIconUrl,
+  onesignalAppId,
+  onesignalRestKey,
+} from '@/adapto/onesignal/config'
 
 /**
- * Web Push de verdade — o aviso que chega com o app FECHADO.
+ * Envio de push pelo OneSignal — o aviso que chega com o app FECHADO.
  *
- * ## Por que isto não existia, e o que muda
+ * ## Por que o envio é por `external_id` e não por Subscription ID
  *
- * Até aqui o alerta de mensagem nova vinha do realtime do Supabase dentro
- * da aba aberta (`use-browser-notifications.ts`). No celular, com o app em
- * segundo plano, nada chegava — e no iPhone nem funcionava, porque o WebKit
- * só entrega notificação para app instalado, por Web Push.
+ * O OneSignal tem dois níveis: a Subscription (um navegador/aparelho) e o
+ * User (a pessoa, com N subscriptions). O id do usuário no nosso sistema é
+ * `auth.users.id`, e é ele que vai como `external_id` no `login()` do SDK.
  *
- * Este módulo envia pelo protocolo Web Push (VAPID), que é o único caminho
- * que acorda o service worker com o app fechado.
+ * Mirar no User em vez da Subscription é o que faz o aviso chegar em TODOS
+ * os aparelhos daquela pessoa sem o nosso banco saber qual endpoint é qual.
+ * A tabela `push_subscriptions` da versão VAPID existia justamente para
+ * isso; o OneSignal agora é a fonte da verdade.
  *
- * ## Configuração
+ * ## Por que a conta inteira, e não só o responsável
  *
- * Três variáveis, e as chaves NÃO têm valor padrão de propósito:
+ * O aviso é "chegou mensagem", e qualquer pessoa da equipe pode atender —
+ * comportamento já em produção, agora preservado. A resolução da lista de
+ * membros fica em `accountMembers()`, e o envio usa `include_aliases` com
+ * o array inteiro.
  *
- *   NEXT_PUBLIC_VAPID_PUBLIC_KEY — vai ao navegador, usado em
- *                                  `pushManager.subscribe()`.
- *   VAPID_PRIVATE_KEY            — só no servidor, assina a entrega.
- *   VAPID_SUBJECT                — `mailto:` ou URL de contato. Os serviços
- *                                  de push exigem para contatar quem envia
- *                                  em caso de abuso.
+ * ## Nunca lança
  *
- * Sem as três, `isPushConfigured()` é falso e o envio vira no-op — o app
- * continua funcionando, só sem push. Isso importa: quem roda uma instância
- * sem VAPID não pode ter o webhook quebrando.
+ * O chamador é o webhook do WhatsApp, que precisa responder 200 ao WAHA. Um
+ * erro de push não pode desfazer a mensagem já gravada — por isso tudo aqui
+ * devolve um resultado em vez de propagar exceção.
  */
 
-let configured: boolean | null = null
+const ONESIGNAL_API = 'https://api.onesignal.com/notifications'
 
-/** As três variáveis estão presentes? Não valida o formato da chave. */
-export function isPushConfigured(): boolean {
-  if (configured !== null) return configured
-
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-  const privateKey = process.env.VAPID_PRIVATE_KEY
-  const subject = process.env.VAPID_SUBJECT
-
-  configured = Boolean(publicKey && privateKey && subject)
-
-  if (configured) {
-    try {
-      webpush.setVapidDetails(subject!, publicKey!, privateKey!)
-    } catch (err) {
-      // Chave com formato inválido é erro de configuração, não de runtime.
-      // Desabilita para o app não tentar enviar a cada mensagem.
-      console.error('[push] VAPID inválido, push desabilitado:', err)
-      configured = false
-    }
-  }
-
-  return configured
-}
-
-/** Apenas para testes: esquece o cache de configuração. */
-export function resetPushConfigCache(): void {
-  configured = null
-}
+/** Limite da API: até 20.000 aliases por chamada. Muito acima do real. */
+const MAX_ALIASES = 20000
 
 export interface PushPayload {
   title: string
@@ -75,109 +49,138 @@ export interface PushPayload {
   icon?: string
 }
 
-/** Uma linha de `push_subscriptions`, no formato que o web-push espera. */
-interface SubscriptionRow {
-  id: string
-  endpoint: string
-  p256dh: string
-  auth: string
-}
-
-function toWebPush(row: SubscriptionRow): WebPushSubscription {
-  return {
-    endpoint: row.endpoint,
-    keys: { p256dh: row.p256dh, auth: row.auth },
-  }
-}
-
 export interface PushResult {
+  /** Quantos destinatários foram aceitos pela API. */
   sent: number
-  /** Inscrições removidas por estarem mortas (404/410). */
+  /** Sempre 0: o OneSignal descarta inscrições mortas por conta própria. */
   pruned: number
+  /** `true` quando faltam credenciais ou não há destinatário. */
   skipped: boolean
+  /** Motivo, para o log do webhook poder explicar sem abrir exceção. */
+  reason?: string
+}
+
+/** Reaproveita o nome e o contrato da versão VAPID. */
+export function isPushConfigured(): boolean {
+  return isOneSignalConfigured()
 }
 
 /**
- * Envia um aviso para TODAS as inscrições de uma conta.
+ * Os `auth.users.id` dos membros de uma conta.
  *
- * Por conta e não por usuário: o aviso é "chegou mensagem", e qualquer
- * pessoa da equipe pode atender. Quem não quer receber desliga no próprio
- * aparelho (a inscrição é removida).
- *
- * Nunca lança: o chamador é um webhook que precisa responder 200 à Meta.
+ * `profiles` é a tabela de vínculo: `profiles.user_id` aponta para
+ * `auth.users`, NÃO `profiles.id` (que é a PK da linha). Comparar pela
+ * coluna errada compila, roda e devolve vazio — erro já pago neste fork.
  */
-export async function sendPushToAccount(
-  accountId: string,
-  payload: PushPayload,
-): Promise<PushResult> {
-  if (!isPushConfigured()) {
-    return { sent: 0, pruned: 0, skipped: true }
-  }
-
+async function accountMembers(accountId: string): Promise<string[]> {
   const { data, error } = await supabaseAdmin()
-    .from('push_subscriptions')
-    .select('id, endpoint, p256dh, auth')
+    .from('profiles')
+    .select('user_id')
     .eq('account_id', accountId)
 
   if (error) {
-    console.error('[push] failed to load subscriptions:', error.message)
-    return { sent: 0, pruned: 0, skipped: false }
+    console.error('[push] falha ao listar membros da conta:', error.message)
+    return []
   }
 
-  const rows = (data ?? []) as SubscriptionRow[]
-  if (rows.length === 0) return { sent: 0, pruned: 0, skipped: false }
+  return ((data ?? []) as Array<{ user_id: string | null }>)
+    .map((row) => row.user_id)
+    .filter((id): id is string => typeof id === 'string' && id.length > 0)
+}
 
-  const body = JSON.stringify(payload)
-  let sent = 0
-  const dead: string[] = []
+/** Formato do corpo aceito pela API REST. Só o que usamos. */
+interface OneSignalBody {
+  app_id: string
+  include_aliases: { external_id: string[] }
+  target_channel: 'push'
+  headings: { en: string }
+  contents: { en: string }
+  web_url?: string
+  chrome_web_icon?: string
+  /** Agrupa por conversa: a segunda mensagem substitui a primeira. */
+  web_push_topic?: string
+  /**
+   * TTL em segundos. 3 dias é o padrão da API; explicitamos para o aviso de
+   * um chat antigo não chegar dias depois sem contexto.
+   */
+  ttl: number
+}
 
-  // Em paralelo: uma conta pode ter vários aparelhos e serializar aqui
-  // atrasaria o webhook sem motivo.
-  await Promise.all(
-    rows.map(async (row) => {
-      try {
-        await webpush.sendNotification(toWebPush(row), body)
-        sent++
-      } catch (err) {
-        const statusCode = (err as { statusCode?: number }).statusCode
+/**
+ * Envia um aviso para TODOS os membros de uma conta.
+ *
+ * Por conta e não por usuário: o aviso é "chegou mensagem", e qualquer
+ * pessoa da equipe pode atender. Quem não quer receber desliga no próprio
+ * aparelho, pelo card de Configurações.
+ */
+export async function sendPushToAccount(
+  accountId: string,
+  payload: PushPayload
+): Promise<PushResult> {
+  if (!isOneSignalConfigured()) {
+    return { sent: 0, pruned: 0, skipped: true, reason: 'not-configured' }
+  }
 
-        // 404/410 = inscrição não existe mais (app desinstalado, dados do
-        // navegador limpos, FCM expirou). Guardar seria acumular lixo e
-        // tentar de novo a cada mensagem.
-        if (statusCode === 404 || statusCode === 410) {
-          dead.push(row.id)
-          return
-        }
+  const externalIds = await accountMembers(accountId)
+  if (externalIds.length === 0) {
+    return { sent: 0, pruned: 0, skipped: true, reason: 'no-members' }
+  }
 
-        // 413 = payload maior que o serviço aceita. 429 = rate limit.
-        // Nenhum dos dois justifica apagar a inscrição.
-        console.error(
-          `[push] delivery failed (status ${statusCode ?? '?'}) for subscription ${row.id}`,
-        )
-      }
-    }),
-  )
+  const appId = onesignalAppId()!
+  const restKey = onesignalRestKey()!
 
-  if (dead.length > 0) {
-    const { error: delError } = await supabaseAdmin()
-      .from('push_subscriptions')
-      .delete()
-      .in('id', dead)
-    if (delError) {
-      console.error('[push] failed to prune dead subscriptions:', delError.message)
+  const body: OneSignalBody = {
+    app_id: appId,
+    include_aliases: { external_id: externalIds.slice(0, MAX_ALIASES) },
+    // Obrigatório junto de `include_aliases`: diz em qual canal entregar.
+    // Sem isso a API rejeita o alias como alvo ambíguo.
+    target_channel: 'push',
+    // `en` é a chave obrigatória do formato multilíngue. O TEXTO já vem
+    // traduzido do `buildPushPayload` (pt-BR); a chave é só o rótulo do
+    // idioma no protocolo, não o idioma do texto.
+    headings: { en: payload.title },
+    contents: { en: payload.body },
+    ttl: 3 * 24 * 60 * 60,
+  }
+
+  if (payload.url) body.web_url = payload.url
+  if (payload.tag) body.web_push_topic = payload.tag
+  const icon = payload.icon ?? notificationIconUrl()
+  if (icon) body.chrome_web_icon = icon
+
+  try {
+    const response = await fetch(ONESIGNAL_API, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        // Formato exato da API: `Key <valor>`. Sem o prefixo, é 401.
+        Authorization: `Key ${restKey}`,
+      },
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
+      // 401/403 = chave errada ou revogada; 400 = corpo inválido. Nenhum
+      // dos dois se resolve repetindo, então só registramos.
+      const detail = await response.text().catch(() => '')
+      console.error(
+        `[push] OneSignal recusou (HTTP ${response.status}): ${detail.slice(0, 300)}`
+      )
+      return { sent: 0, pruned: 0, skipped: false, reason: `http-${response.status}` }
     }
-  }
 
-  // Marca uso para permitir limpeza de inscrições abandonadas depois.
-  if (sent > 0) {
-    const { error: touchError } = await supabaseAdmin()
-      .from('push_subscriptions')
-      .update({ last_used_at: new Date().toISOString() })
-      .eq('account_id', accountId)
-    if (touchError) {
-      console.error('[push] failed to touch last_used_at:', touchError.message)
+    const json = (await response.json().catch(() => null)) as
+      | { id?: string; recipients?: number }
+      | null
+
+    return {
+      sent: typeof json?.recipients === 'number' ? json.recipients : externalIds.length,
+      pruned: 0,
+      skipped: false,
     }
+  } catch (err) {
+    // Timeout/rede: o aviso se perde, mas a mensagem no CRM já está salva.
+    console.error('[push] falha de rede ao chamar o OneSignal:', err)
+    return { sent: 0, pruned: 0, skipped: false, reason: 'network' }
   }
-
-  return { sent, pruned: dead.length, skipped: false }
 }

@@ -448,6 +448,7 @@ Estas foram escolhas conscientes, não acidentes:
 | O switch de push só fica ligado se o **servidor** confirmar a inscrição | O navegador pode ter uma inscrição que o banco não conhece. Confiar só no navegador mostrava "Ativo" para um aparelho que nunca receberia nada |
 | Push é por **aparelho**, não por usuário | A mesma pessoa atende no desktop e no celular; cada um tem endpoint próprio. Uma coluna no perfil representaria um só |
 | Push é enviado por **conta**, não por usuário | O aviso é "chegou mensagem"; qualquer pessoa da equipe pode atender |
+| Push usa **OneSignal**, não Web Push + VAPID | O VAPID próprio falhava exatamente onde o cliente usa o sistema: iOS nunca funcionou (a Apple exige um toque dentro do app instalado), cada deploy derrubava a inscrição, e não havia como saber se entregou. Ver a seção "Push (OneSignal)" abaixo |
 | No iPhone só funciona com o app instalado | WebKit entrega Web Push apenas para app na Tela de Início (iOS 16.4+). Não é escolha nossa — o card explica em vez de oferecer um switch que falharia |
 | Membros entram com **senha temporária criada pelo owner**, não por convite/link | O convite dependia de email entregue e do Site URL correto do Supabase; com o painel errado, o membro ficava travado. Agora: owner cria com email+senha, membro entra e troca a própria senha por updateUser |
 | Owner redefinir senha de membro **desloga o membro de todos os aparelhos** | Senha nova sem deslogar é redefinição de nomes: quem tinha acesso continua com o acesso velho |
@@ -508,6 +509,81 @@ Estas foram escolhas conscientes, não acidentes:
   expande no campo Body do webhook** (MacroDroid: `[sms_text]`, o wizard
   em uso: `{msg}`). A porta robusta é o servidor aceitar múltiplos
   formatos e filtrar pelo padrão do conteúdo, não pelo remetente.
+
+---
+
+## Push (OneSignal)
+
+Substituiu o Web Push próprio com VAPID. Quem manda é o OneSignal.
+
+### Por que o VAPID saiu
+
+Quatro motivos medidos, todos visíveis em produção:
+
+1. **iOS nunca funcionou.** A Apple só mostra o diálogo nativo a partir de
+   um TOQUE dentro do web app instalado. O botão vivia em Configurações,
+   atrás de um aviso "instale primeiro" — o toque exigido quase nunca
+   acontecia.
+2. **Cada deploy derrubava a inscrição.** O `sw.js` sobe o `CACHE_VERSION`
+   por release; o PWA reinstala o worker e a inscrição se perde em
+   silêncio.
+3. **Zero visibilidade.** O `web-push` devolve um status HTTP e mais nada:
+   foi assim que o erro `no-vapid-key` virou um bug de dias.
+4. **Safari revoga a permissão** quando chega um push e o handler não
+   exibe notificação visível.
+
+### Onde mora
+
+| Peça | Arquivo |
+| --- | --- |
+| Config (cliente + servidor) | `src/adapto/onesignal/config.ts` |
+| SDK no navegador | `src/adapto/onesignal/client.ts` |
+| Regra de estado (pura, testável) | `src/adapto/onesignal/subscription.ts` |
+| `login(external_id)` | `src/adapto/onesignal/identity.tsx` |
+| Card de Configurações | `src/adapto/push/push-card.tsx` |
+| Envio no servidor | `src/adapto/push/sender.ts` |
+| Service worker do OneSignal | `public/push/onesignal/OneSignalSDKWorker.js` |
+
+### As três armadilhas que custam um deploy cada
+
+**1. Só um service worker controla um escopo.** O `public/sw.js` do projeto
+já é dono da raiz `/` (cache + tela offline). O worker do OneSignal mora em
+`/push/onesignal/`, com escopo próprio. O caminho precisa bater em DOIS
+lugares — em `src/adapto/onesignal/config.ts` e no painel do OneSignal
+(*Advanced Push Settings → Customize service worker paths and filenames*).
+Configurar só um faz o registro falhar em silêncio.
+
+**2. O pedido de permissão precisa sair de um TOQUE.** Nunca em `useEffect`,
+nunca em timer. No iOS o diálogo não aparece fora de um gesto; no Chrome um
+pedido negado é permanente. O `optIn()` é chamado só no `onClick` do card —
+e o prompt automático do painel fica DESLIGADO pelo mesmo motivo.
+
+**3. O `sw.js` da raiz não tem handler de `push` — e isso é deliberado.**
+Dois handlers disputam a mesma notificação (bug já pago nesta base), e um
+handler que não exibe a notificação faz o Safari revogar a permissão.
+
+### Variáveis
+
+| Variável | Onde | Nota |
+| --- | --- | --- |
+| `NEXT_PUBLIC_ONESIGNAL_APP_ID` | `.env.local` + build arg | público; inlinado em build time |
+| `ONESIGNAL_REST_API_KEY` | `.env.local` (runtime) | **segredo**; autoriza enviar para qualquer inscrito |
+
+`NEXT_PUBLIC_*` muda exige rebuild **com `--no-cache`** — ver a armadilha do
+cache do Docker. As variáveis do VAPID (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`,
+`VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`) podem continuar no `.env.local` sem
+uso; não são lidas por nada.
+
+### Envio: por conta, via `external_id`
+
+`sendPushToAccount()` resolve os `auth.users.id` dos membros em `profiles`
+(coluna `user_id`, nunca `profiles.id`) e manda como
+`include_aliases.external_id`, com `target_channel: 'push'` — sem esse
+campo a API rejeita o alias como alvo ambíguo.
+
+A tabela `push_subscriptions` (migrações 067/068) **não é mais escrita**;
+o OneSignal é a fonte da verdade. Ela ficou para não fazer migração
+destrutiva.
 
 ---
 

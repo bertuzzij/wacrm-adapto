@@ -30,8 +30,12 @@ estiver, ou o código deveria estar aqui, ou a lista está desatualizada.
 | `src/app/(dashboard)/settings/page.tsx` | dois `import` + duas entradas no mapa `panel` | monta os painéis |
 | `src/components/inbox/message-thread.tsx` | o `useMemo` da janela de 24h passou a delegar para `src/adapto/messaging-window/config.ts` | a regra da Meta precisa ser opcional no modo WAHA |
 | `src/components/inbox/conversation-list.tsx` | o chip "Janela fechando" some quando a janela está desligada | filtro que nunca enche parece defeito |
+| `src/app/(dashboard)/dashboard-shell.tsx` | um `import` + `<OneSignalIdentity />` headless | amarrar o aparelho ao usuário no OneSignal (`login(external_id)`), do mesmo jeito que o `ServiceWorkerRegistrar` já faz com o worker |
+| `Dockerfile` | `ARG`/`ENV` trocados de `NEXT_PUBLIC_VAPID_PUBLIC_KEY` para `NEXT_PUBLIC_ONESIGNAL_APP_ID` | `NEXT_PUBLIC_*` é inlinado em build time |
+| `docker-compose.yml` | mesmo build arg, idem | idem |
+| `.env.local.example` | bloco VAPID substituído pelo bloco OneSignal | documenta as variáveis novas sem valores reais |
 
-Total: **~20 linhas**. Vale conferir com:
+Total: **~25 linhas**. Vale conferir com:
 
 ```bash
 git diff --stat upstream/main...main -- . ':(exclude)src/adapto' ':(exclude)messages'
@@ -53,6 +57,10 @@ e a chave `Inbox.sessionTimer.noWindow`.
 | `waha-connection/` | painel de conexão, QR, reconexão, métricas |
 | `waha-interactive/` | botões/lista nativos com fallback para enquete |
 | `messaging-window/` | interruptor da janela de 24h da Meta |
+| `onesignal/` | push com o app fechado: init do SDK, `login(external_id)`, estado da inscrição |
+| `push/` | o card de notificações e o ENVIO no servidor (agora via API REST do OneSignal) |
+| `pwa/` | instalação guiada, manifest, tela offline, `public/sw.js` |
+| `notifications/` | painel de Configurações → Notificações, som, alerta na aba |
 
 ## Servidor e cliente
 

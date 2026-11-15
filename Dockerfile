@@ -33,15 +33,16 @@ ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_PUBLIC_SITE_URL
 ARG NEXT_PUBLIC_APP_LOCALE=pt
-# Chave PÚBLICA de Web Push. É lida pelo navegador em pushManager.subscribe(),
-# então precisa ser inlinada no bundle como qualquer NEXT_PUBLIC_*. A privada
-# (VAPID_PRIVATE_KEY) fica em runtime, via env_file — nunca aqui.
-ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
+# App ID do OneSignal. É lido pelo SDK no navegador em `OneSignal.init()`,
+# então precisa ser inlinado no bundle como qualquer NEXT_PUBLIC_*. A App
+# API Key (ONESIGNAL_REST_API_KEY) fica em runtime, via env_file — nunca
+# aqui.
+ARG NEXT_PUBLIC_ONESIGNAL_APP_ID
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
     NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
     NEXT_PUBLIC_APP_LOCALE=$NEXT_PUBLIC_APP_LOCALE \
-    NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY \
+    NEXT_PUBLIC_ONESIGNAL_APP_ID=$NEXT_PUBLIC_ONESIGNAL_APP_ID \
     NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build

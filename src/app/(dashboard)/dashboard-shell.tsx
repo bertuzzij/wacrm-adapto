@@ -12,6 +12,7 @@ import { BrowserNotificationsListener } from "@/components/notifications/browser
 import { ServiceWorkerRegistrar } from "@/components/pwa/service-worker-registrar";
 import { UnreadCountProvider } from "@/adapto/inbox/unread-count-context";
 import { NewMessageAlert } from "@/adapto/notifications/new-message-alert";
+import { OneSignalIdentity } from "@/adapto/onesignal/identity";
 
 // Auth-gated dashboard shell. Extracted from the layout so the layout
 // itself can stay a server component and export metadata (noindex) —
@@ -63,6 +64,10 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
             `ServiceWorkerRegistration.showNotification()` e proíbe
             `new Notification()` na página. */}
         <ServiceWorkerRegistrar />
+        {/* Amarra este aparelho ao usuário logado no OneSignal (headless).
+            Sem isto o aparelho fica anônimo e nenhum envio por external_id
+            o alcança — "ativei, ficou verde e não chega nada". */}
+        <OneSignalIdentity />
         {/* Toast de mensagem nova em QUALQUER página do dashboard. Antes
             isto morava em inbox/page.tsx e só existia para quem já estava
             na inbox. */}

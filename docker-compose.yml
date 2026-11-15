@@ -12,9 +12,12 @@ services:
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-}
         NEXT_PUBLIC_APP_LOCALE: ${NEXT_PUBLIC_APP_LOCALE:-pt}
-        # Sem esta, o app sobe com push desabilitado mesmo com as chaves
-        # configuradas em runtime: o navegador precisa dela no bundle.
-        NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}
+        # App ID do OneSignal. Sem esta, o app sobe com push desabilitado
+        # mesmo com a API key no env de runtime: o SDK no navegador precisa
+        # do App ID embutido no bundle, e `NEXT_PUBLIC_*` é inlinado em
+        # BUILD time. A App API Key NÃO entra aqui — ela é segredo e sobe
+        # por `env_file`, lida só no servidor.
+        NEXT_PUBLIC_ONESIGNAL_APP_ID: ${NEXT_PUBLIC_ONESIGNAL_APP_ID:-}
     # Runtime (server-only) secrets come from .env.local; they are
     # never baked into the image.
     env_file:

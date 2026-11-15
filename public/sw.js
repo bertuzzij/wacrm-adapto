@@ -46,7 +46,12 @@
 // `/_next/static/*` da versão anterior, e sem este incremento continuaria
 // rodando o bundle velho — sem o botão de instalar e sem as correções de
 // teclado no iOS — até o cache expirar por conta própria.
-const CACHE_VERSION = "v2";
+//
+// v3: push migrado para o OneSignal. O handler `push` saiu deste arquivo (o
+// worker do OneSignal, em `/push/onesignal/`, é o dono agora), e o bundle
+// mudou junto. Sem o incremento, um PWA instalado continuaria rodando o
+// worker antigo — com o handler de push do VAPID e sem o card novo.
+const CACHE_VERSION = "v3";
 const STATIC_CACHE = `adaptoconect-static-${CACHE_VERSION}`;
 
 /** Página mostrada quando a navegação falha e não há nada em cache. */
@@ -154,44 +159,26 @@ self.addEventListener("fetch", (event) => {
 });
 
 /**
- * Web Push: o aviso que chega com o app FECHADO.
+ * Web Push: cliente, o handler `push` daqui foi REMOVIDO de propósito.
  *
- * O payload é montado no servidor (src/adapto/push/payload.ts) e assinado
- * com VAPID. Este handler só exibe.
+ * Até a mudança para o OneSignal, este arquivo tinha um `addEventListener`
+ * para o evento `push` que montava a notificação à mão a partir do payload
+ * assinado com VAPID. Esse handler já não existe, por dois motivos:
  *
- * `renotify` + `tag` juntos são obrigatórios num chat: sem `renotify`, a
- * segunda mensagem do mesmo cliente SUBSTITUI o aviso anterior em silêncio e
- * o usuário não é alertado de que chegou algo novo. Com `tag` sozinho o
- * agrupamento funciona, mas a substituição é muda. Com os dois, ele agrupa
- * por conversa E vibra de novo.
+ *   1. **O worker do OneSignal é dono do push agora.** Ele vive em
+ *      `/push/onesignal/` com escopo próprio e recebe os eventos `push` das
+ *      inscrições criadas pelo SDK. Um handler aqui nunca seria chamado
+ *      para essas inscrições — só sobraria código morto confundindo quem
+ *      ler depois.
+ *   2. **Safari revoga a permissão** quando chega um push e o handler que o
+ *      recebeu não exibe notificação visível. Manter dois caminhos de
+ *      exibição era risco sem ganho.
+ *
+ * O `notificationclick` abaixo FICA: ele ainda é usado pelo aviso feito
+ * pela própria página (`src/adapto/pwa/notify.ts`, aba aberta), que não
+ * passa pelo OneSignal. O clique do OneSignal é tratado pelo worker dele,
+ * configurado no painel (Notification click behavior → Origin).
  */
-self.addEventListener("push", (event) => {
-  let payload = {};
-  try {
-    payload = event.data ? event.data.json() : {};
-  } catch {
-    // Payload não-JSON (ou vazio) ainda precisa produzir um aviso: o
-    // navegador revoga a inscrição se o push não resultar em notificação
-    // visível (`userVisibleOnly: true`).
-    payload = {};
-  }
-
-  const title = payload.title || "AdaptoConect";
-  const options = {
-    body: payload.body || "Voce tem uma nova mensagem.",
-    icon: payload.icon || "/icons/icon-192.png",
-    // `badge` é monocromático no Android — o ícone colorido vira um
-    // quadrado branco na barra de status.
-    badge: "/icons/badge-96.png",
-    // `tag` agrupa por conversa; `renotify` garante que a substituição
-    // ainda alerte em vez de trocar o texto em silêncio.
-    tag: payload.tag || "adaptoconect-message",
-    renotify: true,
-    data: { url: payload.url || "/inbox" },
-  };
-
-  event.waitUntil(self.registration.showNotification(title, options));
-});
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
