@@ -106,18 +106,34 @@ describe('o cliente amarra o aparelho ao usuário (external_id)', () => {
   })
 })
 
-describe('o envio usa o OneSignal e mira por alias', () => {
+describe('o envio usa o OneSignal e mira inscrições válidas', () => {
   const sender = stripComments(read('src/adapto/push/sender.ts'))
 
-  it('usa include_aliases com external_id — a forma recomendada', () => {
-    expect(sender).toMatch(/include_aliases/
-    )
-    expect(sender).toMatch(/external_id/)
+  it('mira por include_subscription_ids, não por external_id', () => {
+    // Medido em produção: um usuário com 3 inscrições (1 válida, 2 mortas)
+    // fazia o envio por alias falhar para TODOS, com
+    // `invalid_aliases`. Uma inscrição inválida envenena o alias inteiro.
+    expect(sender).toMatch(/include_subscription_ids/)
+    expect(sender).not.toMatch(/include_aliases/)
   })
 
-  it('declara target_channel, obrigatório junto de include_aliases', () => {
-    // Sem `target_channel` a API rejeita o alias como alvo ambíguo.
-    expect(sender).toMatch(/target_channel:\s*'push'/)
+  it('filtra inscrições mortas antes de enviar', () => {
+    // `invalid_identifier: true` marca os registros deixados por tentativas
+    // antigas com o service worker no caminho errado.
+    expect(sender).toMatch(/invalid_identifier\s*!==\s*true/)
+  })
+
+  it('só envia para inscrições de membros da própria conta', () => {
+    // Sem este filtro, a inscrição de outra pessoa receberia o conteúdo da
+    // mensagem.
+    expect(sender).toMatch(/wanted\.has\(p\.external_user_id\)/)
+  })
+
+  it('NÃO usa web_push_topic', () => {
+    // A doc: "avoid replacing older web notifications by using unique
+    // web_push_topic values". Usar um valor fixo por conversa fazia cada
+    // aviso substituir o anterior — o sintoma era "hora aparece, hora não".
+    expect(sender).not.toMatch(/web_push_topic/)
   })
 
   it('busca os membros por profiles.user_id, nunca por profiles.id', () => {

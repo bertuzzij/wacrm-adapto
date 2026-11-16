@@ -91,19 +91,73 @@ async function accountMembers(accountId: string): Promise<string[]> {
 /** Formato do corpo aceito pela API REST. Só o que usamos. */
 interface OneSignalBody {
   app_id: string
-  include_aliases: { external_id: string[] }
-  target_channel: 'push'
+  include_subscription_ids: string[]
   headings: { en: string }
   contents: { en: string }
   web_url?: string
   chrome_web_icon?: string
-  /** Agrupa por conversa: a segunda mensagem substitui a primeira. */
-  web_push_topic?: string
   /**
    * TTL em segundos. 3 dias é o padrão da API; explicitamos para o aviso de
    * um chat antigo não chegar dias depois sem contexto.
    */
   ttl: number
+}
+
+/** Uma inscrição como a API legada de players devolve. */
+interface PlayerRow {
+  id: string
+  external_user_id: string | null
+  invalid_identifier: boolean
+}
+
+/**
+ * As inscrições VÁLIDAS dos usuários informados.
+ *
+ * Consulta a API legada `players` porque é a única que lista inscrições por
+ * app com o campo `invalid_identifier` — e é justamente esse campo que
+ * separa os aparelhos que funcionam dos registros mortos deixados por
+ * tentativas antigas de inscrição.
+ *
+ * Devolve `[]` em qualquer erro: o chamador trata como "nada a enviar", e o
+ * webhook não quebra.
+ */
+async function activeSubscriptionIds(externalIds: string[]): Promise<string[]> {
+  const appId = onesignalAppId()
+  const restKey = onesignalRestKey()
+  if (!appId || !restKey) return []
+
+  try {
+    // `limit=300` é o máximo da API. Uma conta com mais de 300 inscrições
+    // teria de paginar; nesta instalação uma conta tem uma pessoa.
+    const response = await fetch(
+      `https://api.onesignal.com/players?app_id=${appId}&limit=300`,
+      { headers: { Authorization: `Basic ${restKey}` } }
+    )
+    if (!response.ok) {
+      console.error(`[push] players respondeu HTTP ${response.status}`)
+      return []
+    }
+
+    const json = (await response.json().catch(() => null)) as
+      | { players?: PlayerRow[] }
+      | null
+    const players = json?.players ?? []
+
+    // Só as válidas E de alguém desta conta: enviar para a inscrição de
+    // outra pessoa vazaria o conteúdo da mensagem.
+    const wanted = new Set(externalIds)
+    return players
+      .filter(
+        (p) =>
+          p.invalid_identifier !== true &&
+          typeof p.external_user_id === 'string' &&
+          wanted.has(p.external_user_id)
+      )
+      .map((p) => p.id)
+  } catch (err) {
+    console.error('[push] falha ao listar inscrições:', err)
+    return []
+  }
 }
 
 /**
@@ -129,12 +183,36 @@ export async function sendPushToAccount(
   const appId = onesignalAppId()!
   const restKey = onesignalRestKey()!
 
+  // -------------------------------------------------------------------
+  // Alvo: subscription_ids, NÃO external_id.
+  //
+  // Medido em produção, com um usuário que tinha 3 inscrições (1 válida e
+  // 2 mortas de tentativas antigas). Enviar por `include_aliases` devolvia:
+  //
+  //   {"errors":{"invalid_aliases":{"external_id":["2ae39d2c-...",
+  //                                                "2ae39d2c-..."]}}}
+  //
+  // Ou seja: UMA inscrição inválida no mesmo usuário envenena o alias
+  // inteiro e o envio não sai para NINGUÉM — nem para os aparelhos bons.
+  // O mesmo envio por `include_subscription_ids` devolveu
+  // successful=1, failed=0.
+  //
+  // A causa das inscrições mortas é a nossa própria migração: cada
+  // tentativa com o service worker no caminho errado (Typical Site x
+  // Custom Code) registrou um aparelho que nunca completou. Elas ficam no
+  // OneSignal como `invalid_identifier=true`.
+  //
+  // Alvo por subscription_id também é mais preciso: o aviso vai para os
+  // aparelhos que existem, em vez de depender de o alias estar limpo.
+  // -------------------------------------------------------------------
+  const subscriptionIds = await activeSubscriptionIds(externalIds)
+  if (subscriptionIds.length === 0) {
+    return { sent: 0, pruned: 0, skipped: true, reason: 'no-subscriptions' }
+  }
+
   const body: OneSignalBody = {
     app_id: appId,
-    include_aliases: { external_id: externalIds.slice(0, MAX_ALIASES) },
-    // Obrigatório junto de `include_aliases`: diz em qual canal entregar.
-    // Sem isso a API rejeita o alias como alvo ambíguo.
-    target_channel: 'push',
+    include_subscription_ids: subscriptionIds.slice(0, MAX_ALIASES),
     // `en` é a chave obrigatória do formato multilíngue. O TEXTO já vem
     // traduzido do `buildPushPayload` (pt-BR); a chave é só o rótulo do
     // idioma no protocolo, não o idioma do texto.
@@ -144,7 +222,11 @@ export async function sendPushToAccount(
   }
 
   if (payload.url) body.web_url = payload.url
-  if (payload.tag) body.web_push_topic = payload.tag
+  // `web_push_topic` NÃO é usado: a doc diz "avoid replacing older web
+  // notifications by using unique web_push_topic values". Usá-lo com um
+  // valor fixo por conversa fazia cada aviso SUBSTITUIR o anterior — o
+  // sintoma era "hora aparece, hora não". Sem ele, cada aviso fica
+  // visível por conta própria.
   const icon = payload.icon ?? notificationIconUrl()
   if (icon) body.chrome_web_icon = icon
 
