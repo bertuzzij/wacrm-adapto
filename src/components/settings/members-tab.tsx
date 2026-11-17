@@ -109,6 +109,7 @@ function fmtDate(iso: string): string {
 
 export function MembersTab() {
   const t = useTranslations('Settings.members');
+  const tAdmin = useTranslations('Settings.adminPassword');
   const tRoles = useTranslations('Settings.roles');
   const { user, canManageMembers } = useAuth();
   const { getPresence, getRow, now } = usePresence();
@@ -426,8 +427,8 @@ export function MembersTab() {
                         size="sm"
                         onClick={() => setResetTarget(member)}
                         disabled={isBusy}
-                        aria-label={t('resetPassword')}
-                        title={t('resetPassword')}
+                        aria-label={tAdmin('resetPassword')}
+                        title={tAdmin('resetPassword')}
                         className="border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
                       >
                         <KeyRound className="size-4" />

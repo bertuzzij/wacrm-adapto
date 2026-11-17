@@ -84,34 +84,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: t('account.members.roleInvalid') }, { status: 400 });
     }
 
-    // 4. SQL direto (service role).
-    const dbUrl = process.env.SUPABASE_DB_URL;
-    if (!dbUrl) {
-      console.error('[admin-create] SUPABASE_DB_URL not configured');
-      return NextResponse.json(
-        { error: t('common.serviceUnavailable') },
-        { status: 503 }
-      );
-    }
+    // 4. SQL direto (service role, IPv4 forçado — ver withServiceDb).
+    const { withServiceDb } = await import('@/lib/db/service-db');
 
-    const { default: pg } = await import('pg');
-    const client = new pg.Client({ connectionString: dbUrl });
+    let newUserId: string | null = null;
     try {
-      await client.connect();
-      const result = await client.query(CREATE_MEMBER_SQL, [
-        email,
-        password,
-        role,
-        accountId,
-        fullName,
-      ]);
-      const newUserId: string | null = result.rows[0]?.user_id ?? null;
-      if (!newUserId) {
-        return NextResponse.json(
-          { error: t('account.members.createFailed') },
-          { status: 500 }
-        );
-      }
+      newUserId = await withServiceDb(async (client) => {
+        const result = await client.query(CREATE_MEMBER_SQL, [
+          email,
+          password,
+          role,
+          accountId,
+          fullName,
+        ]);
+        return (result.rows[0]?.user_id ?? null) as string | null;
+      });
     } catch (sqlError) {
       const message = sqlError instanceof Error ? sqlError.message : '';
       // 23505 = unique_violation: email já cadastrado (em auth.users).
@@ -126,8 +113,13 @@ export async function POST(request: Request) {
         { error: t('account.members.createFailed') },
         { status: 500 }
       );
-    } finally {
-      await client.end().catch(() => {});
+    }
+
+    if (!newUserId) {
+      return NextResponse.json(
+        { error: t('account.members.createFailed') },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ ok: true }, { status: 201 });

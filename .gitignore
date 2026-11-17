@@ -50,6 +50,11 @@ supabase/.temp/
 .waha-webhook-url.txt
 # generated locally: previous WAHA webhook list, written before each re-register
 .waha-webhooks.backup-*.json
+# generated locally: the pooler connection string, password included. The
+# service-role URL already lives in `.env.local` (SUPABASE_DB_URL); this file
+# holding a second copy is the kind of duplicate that gets committed by
+# accident, because nothing reads it and so nothing reminds you it is there.
+.pooler-url.txt
 
 # local secrets that must never be tracked, whatever they are named.
 # Belt and braces next to the .env* rule above — a stray `secrets.env`

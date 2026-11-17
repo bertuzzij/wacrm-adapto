@@ -128,32 +128,21 @@ export async function POST(request: Request) {
     }
 
     // ------------------------------------------------------------
-    // 5. Redefinição: SQL direto ao auth.users (service role).
-    //    A senha em claro entra só aqui e morre dentro da função SQL.
+    // 5. Redefinição: SQL direto ao auth.users (service role, IPv4
+    //    forçado — ver withServiceDb). A senha em claro entra só aqui e
+    //    morre dentro da função SQL.
     // ------------------------------------------------------------
-    const dbUrl = process.env.SUPABASE_DB_URL;
-    if (!dbUrl) {
-      console.error('[admin-password] SUPABASE_DB_URL not configured');
-      return NextResponse.json(
-        { error: t('common.serviceUnavailable') },
-        { status: 503 }
-      );
-    }
+    const { withServiceDb } = await import('@/lib/db/service-db');
+    const changed: boolean = await withServiceDb((client) =>
+      client.query(SET_PASSWORD_SQL, [email, password]).then(
+        (result) => result.rows[0]?.ok === true
+      )
+    );
 
-    const { default: pg } = await import('pg');
-    const client = new pg.Client({ connectionString: dbUrl });
-    try {
-      await client.connect();
-      const result = await client.query(SET_PASSWORD_SQL, [email, password]);
-      const changed: boolean = result.rows[0]?.ok === true;
-
-      if (!changed) {
-        // O email passou no profiles mas não existe em auth.users: estado
-        // inconsistente; resposta uniforme de "não encontrado".
-        return NextResponse.json({ error: t('common.userNotFound') }, { status: 404 });
-      }
-    } finally {
-      await client.end().catch(() => {});
+    if (!changed) {
+      // O email passou no profiles mas não existe em auth.users: estado
+      // inconsistente; resposta uniforme de "não encontrado".
+      return NextResponse.json({ error: t('common.userNotFound') }, { status: 404 });
     }
 
     return NextResponse.json({ ok: true });
