@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import { CornerUpLeft, Copy, SmilePlus } from "lucide-react";
+import { CornerUpLeft, Copy, SmilePlus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { shouldOpenTouchToolbar } from "@/lib/inbox/context-menu";
@@ -85,6 +85,39 @@ export function MessageActions({
     setTouchOpen(false);
   };
 
+  // Apagar: só mensagem própria e só se já foi enviada (tem id no
+  // WhatsApp). Apaga para TODOS — o WhatsApp não tem "apagar só para mim"
+  // via API. A bolha passa a mostrar o rótulo de apagada.
+  const deletable = isAgent && !!message.message_id && message.content_type !== "deleted";
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!window.confirm(t("deleteConfirm"))) return;
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/whatsapp/message", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message_id: message.id }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        toast.error(data?.error ?? t("deleteFailed"));
+        return;
+      }
+      // A troca da bolha acontece pelo realtime: o UPDATE em messages
+      // (content_type='deleted') chega como evento e o thread re-renderiza.
+      toast.success(t("deleted"));
+      setTouchOpen(false);
+    } catch {
+      toast.error(t("deleteFailed"));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // Row alignment lives here (not in MessageBubble) so the `group/actions`
   // hover region matches the bubble's content width — hovering empty space
   // in the row no longer reveals the toolbar.
@@ -156,6 +189,22 @@ export function MessageActions({
         >
           <Copy className="h-3.5 w-3.5" />
         </button>
+        {deletable && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex h-5 w-5 items-center justify-center rounded-full text-destructive hover:bg-destructive/10"
+            aria-label={t("delete")}
+            title={t("delete")}
+          >
+            {deleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5" />
+            )}
+          </button>
+        )}
       </div>
       </div>
     </div>

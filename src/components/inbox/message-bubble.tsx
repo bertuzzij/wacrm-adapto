@@ -21,12 +21,14 @@ import {
   ExternalLink,
   Phone,
   Copy,
+  Ban,
   type LucideIcon,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ReplyQuote } from "./reply-quote";
 import { MessageReactions } from "./message-reactions";
 import { WhatsAppText } from "@/lib/inbox/whatsapp-format";
+import { useTranslations as useBubbleTranslations } from "next-intl";
 import {
   MediaAudioBubble,
   MediaDocumentBubble,
@@ -193,7 +195,16 @@ function MessageContent({
   const openMedia = onOpenMedia ? () => onOpenMedia(message.id) : undefined;
 
   switch (message.content_type) {
-    case "text":
+    case "deleted":
+      // Apagada pelo atendente (migration 073): o texto foi zerado no
+      // banco e removida no WhatsApp. Rótulo em vez de conteúdo, igual
+      // ao app do celular.
+      return (
+        <p className="flex items-center gap-1.5 text-sm italic text-muted-foreground">
+          <Ban className="h-3.5 w-3.5" />
+          {t("deleted")}
+        </p>
+      );    case "text":
       return (
         <p className="whitespace-pre-wrap break-words text-sm">
           <WhatsAppText text={message.content_text ?? ""} isAgent={isAgent} />

@@ -55,7 +55,7 @@ function wahaHeaders(json = true): Record<string, string> {
 }
 
 async function wahaRequest<T>(
-  method: 'GET' | 'POST' | 'PUT',
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   path: string,
   body?: unknown,
 ): Promise<T> {
@@ -399,6 +399,33 @@ export async function wahaTyping(args: { messageId: string }): Promise<void> {
     session: wahaSession(),
     chatId,
   })
+}
+
+/**
+ * Apaga uma mensagem do WhatsApp — para todos os participantes.
+ *
+ * Endpoint confirmado nesta instalação (GOWS, testado com 200 real):
+ *   DELETE /api/{session}/chats/{chatId}/messages/{messageId}
+ *
+ * O `chatId` vem embutido no próprio id da mensagem
+ * (`<fromMe>_<chatId>_<id>`), como `wahaTyping` já extrai.
+ *
+ * Só apaga mensagens do PRÓPRIO número: o WhatsApp não permite apagar
+ * mensagem de outro participante. O chamador valida `sender_type` antes.
+ */
+export async function wahaDeleteMessage(args: {
+  messageId: string
+}): Promise<void> {
+  const parts = args.messageId.split('_')
+  const chatId = parts.length >= 3 ? parts[1] : null
+  if (!chatId) {
+    throw new WahaApiError('message id sem chatId embutido', 400)
+  }
+
+  await wahaRequest(
+    'DELETE',
+    `/api/${encodeURIComponent(wahaSession())}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(args.messageId)}`,
+  )
 }
 
 // ------------------------------------------------------------

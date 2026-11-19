@@ -247,7 +247,9 @@ export type ContentType =
   | 'location'
   | 'template'
   /** Customer tapped a reply button or list row on a message we sent. */
-  | 'interactive';
+  | 'interactive'
+  /** Deleted by the attendant: text is gone, UI shows the placeholder. */
+  | 'deleted';
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
 
 export interface Message {
@@ -258,6 +260,11 @@ export interface Message {
   content_type: ContentType;
   content_text?: string;
   media_url?: string;
+  /**
+   * Quando a mensagem foi apagada pelo atendente (migration 073). Texto é
+   * zerado e `content_type` vira 'deleted' — a UI mostra o rótulo.
+   */
+  deleted_at?: string | null;
   /**
    * MIME type of `media_url`'s content, as Meta reported it. Inbound
    * media only — outbound URLs already carry a filename and extension.
