@@ -232,16 +232,63 @@ export function MediaAudioBubble({
   t: Translator;
 }) {
   const { downloading, download } = useMediaDownload(message, t);
+  // Transcrição é por clique e NÃO persiste: o texto aparece sob o áudio
+  // para o atendente ler. Guardar no banco é decisão de produto à parte.
+  const [transcription, setTranscription] = useState<string | null>(null);
+  const [transcribing, setTranscribing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const transcribe = async () => {
+    setTranscribing(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/whatsapp/transcribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message_id: message.id }),
+      });
+      const data = (await res.json().catch(() => null)) as
+        | { text?: string; error?: string }
+        | null;
+      if (!res.ok || !data?.text) {
+        setError(data?.error ?? t('transcribeFailed'));
+        return;
+      }
+      setTranscription(data.text);
+    } catch {
+      setError(t('transcribeFailed'));
+    } finally {
+      setTranscribing(false);
+    }
+  };
 
   return (
-    <div className="flex items-center gap-2">
-      <audio src={message.media_url} controls className="max-w-60" />
-      <MediaActionButton
-        icon={Download}
-        label={t("download")}
-        onClick={download}
-        busy={downloading}
-      />
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <audio src={message.media_url} controls className="max-w-60" />
+        <MediaActionButton
+          icon={Download}
+          label={t("download")}
+          onClick={download}
+          busy={downloading}
+        />
+        <MediaActionButton
+          icon={transcribing ? Loader2 : FileText}
+          label={t("transcribe")}
+          onClick={() => void transcribe()}
+          busy={transcribing}
+        />
+      </div>
+      {transcription && (
+        <div className="rounded-lg bg-muted/50 px-3 py-2 text-sm text-foreground">
+          {transcription}
+        </div>
+      )}
+      {error && (
+        <div className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          {error}
+        </div>
+      )}
     </div>
   );
 }
