@@ -394,9 +394,14 @@ async function toMetaBody(event: WahaEvent): Promise<Record<string, unknown> | n
         const message = buildMetaMessage(payload, groupKey)
         if (!message) return null
         const groupName = await fetchGroupName(payload.from!)
+        // Mesmo contrato do bloco de cliente: null = preserva o nome que
+        // já está no banco, em vez de gravar o fallback.
+        const groupContactProfile = groupDisplayName(groupName)
+          ? { profile: { name: groupDisplayName(groupName) as string } }
+          : {}
         return wrap({
           contacts: [
-            { profile: { name: groupDisplayName(groupName) }, wa_id: groupKey },
+            { ...groupContactProfile, wa_id: groupKey },
           ],
           // Marca a origem para o handler gravar `sender_type = 'agent'`
           // em vez de 'customer'. Campo fora do padrão Meta de propósito:
@@ -455,12 +460,19 @@ async function toMetaBody(event: WahaEvent): Promise<Record<string, unknown> | n
           }
         : message
 
+      // O nome do contato do grupo SÓ é enviado quando o WAHA o soube.
+      // `groupDisplayName` devolve null quando não há nome — e gravar o
+      // fallback '(grupo sem nome)' por cima de um nome bom era o bug do
+      // 19/11: uma consulta ao WAHA falhando apagava a identidade do grupo
+      // no CRM inteiro. O handler Meta não atualiza o nome quando o campo
+      // vem vazio, então null = preserva o que já está lá.
+      const groupContactProfile = groupDisplayName(groupName)
+        ? { profile: { name: groupDisplayName(groupName) as string } }
+        : {}
+
       return wrap({
         contacts: [
-          {
-            profile: { name: groupDisplayName(groupName) },
-            wa_id: groupKey,
-          },
+          { ...groupContactProfile, wa_id: groupKey },
         ],
         messages: [withAuthor],
       })

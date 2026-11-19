@@ -94,13 +94,17 @@ describe('groupDisplayName', () => {
     expect(groupDisplayName('Soluti-Unimed São Carlos')).toBe('Soluti-Unimed São Carlos');
   });
 
-  it('cai no rótulo neutro quando falta nome', () => {
-    expect(groupDisplayName('')).toBe('(grupo sem nome)');
-    expect(groupDisplayName(null)).toBe('(grupo sem nome)');
-    expect(groupDisplayName('   ')).toBe('(grupo sem nome)');
+  it('devolve null quando falta nome — para o webhook NÃO gravar por cima', () => {
+    // O fallback '(grupo sem nome)' era gravado no contacts.name a cada
+    // mensagem, e quando o WAHA dava 500 na consulta, um nome bom era
+    // sobrescrito pelo rótulo (bug do 19/11). Null significa "não sei",
+    // e o webhook não atualiza o que não sabe.
+    expect(groupDisplayName('')).toBeNull();
+    expect(groupDisplayName(null)).toBeNull();
+    expect(groupDisplayName('   ')).toBeNull();
   });
 
-  it('aceita rótulo traduzido', () => {
+  it('aceita rótulo explícito para EXIBIÇÃO (nunca para gravar)', () => {
     expect(groupDisplayName('', 'Grupo')).toBe('Grupo');
   });
 });

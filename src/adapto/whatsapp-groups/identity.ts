@@ -69,11 +69,22 @@ export function groupChatIdFromPhoneKey(value: string | null | undefined): strin
  * O WAHA já manda o nome que o operador vê no WhatsApp; quando falta
  * (grupo recém-criado, ou evento sem `_data.subject`), cai num rótulo
  * neutro em vez de mostrar o JID cru para o atendente.
+ *
+ * ## O que `null` significa e por que importa (bug do 19/11)
+ *
+ * O webhook grava este valor no `contacts.name` a CADA mensagem do grupo.
+ * Quando o WAHA não responde o nome (sessão reiniciando, storage de grupos
+ * desligado — deu 500 num episódio real), o fallback '(grupo sem nome)'
+ * era gravado POR CIMA de um nome bom, e o grupo perdia a identidade no
+ * CRM inteiro até alguém corrigir à mão.
+ *
+ * Devolver `null` deixa o chamador decidir: exibir o rótulo SEM gravar.
+ * O webhook agora só atualiza o nome quando há nome real.
  */
 export function groupDisplayName(
   name: string | null | undefined,
-  fallback = '(grupo sem nome)'
-): string {
+  fallback: string | null = null,
+): string | null {
   const trimmed = (name ?? '').trim();
   return trimmed.length > 0 ? trimmed : fallback;
 }
