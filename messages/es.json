@@ -486,7 +486,10 @@
       "viewImage": "Ver imagen",
       "expandVideo": "Ampliar video",
       "imageAlt": "Imagen compartida",
-      "retry": "Reenviar"
+      "retry": "Reenviar",
+      "deleted": "Este mensaje fue eliminado",
+      "transcribe": "Transcribir audio",
+      "transcribeFailed": "No se pudo transcribir"
     },
     "mediaViewer": {
       "counter": "{index} de {total}",
@@ -504,12 +507,15 @@
     "actions": {
       "reply": "Responder",
       "copyText": "Copiar texto",
-      "delete": "Eliminar",
+      "delete": "Eliminar mensaje",
       "react": "Reaccionar",
       "reactWith": "Reaccionar con {emoji}",
       "nothingToCopy": "Nada que copiar",
       "copied": "Copiado",
-      "copyFailed": "Error al copiar"
+      "copyFailed": "Error al copiar",
+      "deleteConfirm": "¿Eliminar este mensaje para todos en WhatsApp? No se puede deshacer.",
+      "deleteFailed": "No se pudo eliminar el mensaje",
+      "deleted": "Mensaje eliminado"
     },
     "replyQuote": {
       "photo": "[Foto]",
@@ -3184,6 +3190,21 @@
       "submitFailed": "Error al enviar la plantilla.",
       "metaApiStatus": "Error de la API de Meta: {status}",
       "syncFailed": "Error al sincronizar las plantillas"
+    },
+    "delete": {
+      "wahaOnly": "Eliminar mensajes solo está disponible en modo WAHA.",
+      "idRequired": "Indica el mensaje a eliminar.",
+      "messageNotFound": "Mensaje no encontrado.",
+      "customerMessage": "No se puede eliminar un mensaje del cliente — solo los tuyos.",
+      "notSent": "Este mensaje aún no fue enviado.",
+      "unknownWahaError": "Error desconocido de WhatsApp.",
+      "wahaError": "WhatsApp rechazó la eliminación: {message}",
+      "dbFailed": "El mensaje fue eliminado en WhatsApp pero no se pudo marcar en el CRM."
+    },
+    "transcribe": {
+      "idRequired": "Indica el mensaje a transcribir.",
+      "messageNotFound": "Mensaje no encontrado.",
+      "notAudio": "Este mensaje no es un audio."
     }
   },
   "Pwa": {

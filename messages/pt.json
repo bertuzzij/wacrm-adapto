@@ -486,7 +486,10 @@
       "viewImage": "Ver imagem",
       "expandVideo": "Expandir vídeo",
       "imageAlt": "Imagem compartilhada",
-      "retry": "Reenviar"
+      "retry": "Reenviar",
+      "deleted": "Esta mensagem foi apagada",
+      "transcribe": "Transcrever áudio",
+      "transcribeFailed": "Não foi possível transcrever"
     },
     "mediaViewer": {
       "counter": "{index} de {total}",
@@ -504,12 +507,15 @@
     "actions": {
       "reply": "Responder",
       "copyText": "Copiar texto",
-      "delete": "Excluir",
+      "delete": "Apagar mensagem",
       "react": "Reagir",
       "reactWith": "Reagir com {emoji}",
       "nothingToCopy": "Nada para copiar",
       "copied": "Copiado",
-      "copyFailed": "Falha ao copiar"
+      "copyFailed": "Falha ao copiar",
+      "deleteConfirm": "Apagar esta mensagem para todos no WhatsApp? Não dá para desfazer.",
+      "deleteFailed": "Não foi possível apagar a mensagem",
+      "deleted": "Mensagem apagada"
     },
     "replyQuote": {
       "photo": "[Foto]",
@@ -3184,6 +3190,21 @@
       "submitFailed": "Falha ao enviar o modelo.",
       "metaApiStatus": "Erro da API da Meta: {status}",
       "syncFailed": "Falha ao sincronizar os modelos"
+    },
+    "delete": {
+      "wahaOnly": "Apagar mensagem só está disponível em modo WAHA.",
+      "idRequired": "Informe a mensagem a apagar.",
+      "messageNotFound": "Mensagem não encontrada.",
+      "customerMessage": "Não é possível apagar mensagem de cliente — só as suas.",
+      "notSent": "Esta mensagem ainda não foi enviada.",
+      "unknownWahaError": "Erro desconhecido no WhatsApp.",
+      "wahaError": "O WhatsApp recusou o apagamento: {message}",
+      "dbFailed": "A mensagem foi apagada no WhatsApp mas não pôde ser marcada no CRM."
+    },
+    "transcribe": {
+      "idRequired": "Informe a mensagem a transcrever.",
+      "messageNotFound": "Mensagem não encontrada.",
+      "notAudio": "Esta mensagem não é um áudio."
     }
   },
   "Pwa": {

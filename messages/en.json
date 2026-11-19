@@ -486,7 +486,10 @@
       "viewImage": "View image",
       "expandVideo": "Expand video",
       "imageAlt": "Shared image",
-      "retry": "Resend"
+      "retry": "Resend",
+      "deleted": "This message was deleted",
+      "transcribe": "Transcribe audio",
+      "transcribeFailed": "Could not transcribe"
     },
     "mediaViewer": {
       "counter": "{index} of {total}",
@@ -504,12 +507,15 @@
     "actions": {
       "reply": "Reply",
       "copyText": "Copy text",
-      "delete": "Delete",
+      "delete": "Delete message",
       "react": "React",
       "reactWith": "React with {emoji}",
       "nothingToCopy": "Nothing to copy",
       "copied": "Copied",
-      "copyFailed": "Copy failed"
+      "copyFailed": "Copy failed",
+      "deleteConfirm": "Delete this message for everyone on WhatsApp? This cannot be undone.",
+      "deleteFailed": "Could not delete the message",
+      "deleted": "Message deleted"
     },
     "replyQuote": {
       "photo": "[Photo]",
@@ -3184,6 +3190,21 @@
       "submitFailed": "Failed to submit template.",
       "metaApiStatus": "Meta API error: {status}",
       "syncFailed": "Failed to sync templates"
+    },
+    "delete": {
+      "wahaOnly": "Deleting messages is only available in WAHA mode.",
+      "idRequired": "Specify the message to delete.",
+      "messageNotFound": "Message not found.",
+      "customerMessage": "Cannot delete a customer message — only your own.",
+      "notSent": "This message has not been sent yet.",
+      "unknownWahaError": "Unknown WhatsApp error.",
+      "wahaError": "WhatsApp refused the deletion: {message}",
+      "dbFailed": "The message was deleted on WhatsApp but could not be marked in the CRM."
+    },
+    "transcribe": {
+      "idRequired": "Specify the message to transcribe.",
+      "messageNotFound": "Message not found.",
+      "notAudio": "This message is not audio."
     }
   },
   "Pwa": {

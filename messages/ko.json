@@ -486,7 +486,10 @@
       "viewImage": "이미지 보기",
       "expandVideo": "동영상 확대",
       "imageAlt": "공유된 이미지",
-      "retry": "다시 보내기"
+      "retry": "다시 보내기",
+      "deleted": "이 메시지는 삭제되었습니다",
+      "transcribe": "오디오 트랜스크립트",
+      "transcribeFailed": "트랜스크립트 실패"
     },
     "mediaViewer": {
       "counter": "{total}개 중 {index}번째",
@@ -504,12 +507,15 @@
     "actions": {
       "reply": "답장",
       "copyText": "텍스트 복사",
-      "delete": "삭제",
+      "delete": "메시지 삭제",
       "react": "반응 남기기",
       "reactWith": "{emoji}(으)로 반응하기",
       "nothingToCopy": "복사할 내용이 없습니다",
       "copied": "복사됨",
-      "copyFailed": "복사 실패"
+      "copyFailed": "복사 실패",
+      "deleteConfirm": "WhatsApp에서 모두에게 이 메시지를 삭제할까요? 되돌릴 수 없습니다.",
+      "deleteFailed": "메시지를 삭제하지 못했습니다",
+      "deleted": "메시지가 삭제되었습니다"
     },
     "replyQuote": {
       "photo": "[사진]",
@@ -3184,6 +3190,21 @@
       "submitFailed": "템플릿을 제출하지 못했습니다.",
       "metaApiStatus": "Meta API 오류: {status}",
       "syncFailed": "템플릿을 동기화하지 못했습니다"
+    },
+    "delete": {
+      "wahaOnly": "메시지 삭제는 WAHA 모드에서만 사용할 수 있습니다.",
+      "idRequired": "삭제할 메시지를 지정하세요.",
+      "messageNotFound": "메시지를 찾을 수 없습니다.",
+      "customerMessage": "고객의 메시지는 삭제할 수 없습니다 — 본인 것만 가능합니다.",
+      "notSent": "이 메시지는 아직 전송되지 않았습니다.",
+      "unknownWahaError": "알 수 없는 WhatsApp 오류입니다.",
+      "wahaError": "WhatsApp이 삭제를 거부했습니다: {message}",
+      "dbFailed": "WhatsApp에서는 삭제되었지만 CRM에 표시하지 못했습니다."
+    },
+    "transcribe": {
+      "idRequired": "트랜스크립트할 메시지를 지정하세요.",
+      "messageNotFound": "메시지를 찾을 수 없습니다.",
+      "notAudio": "이 메시지는 오디오가 아닙니다."
     }
   },
   "Pwa": {
