@@ -48,6 +48,14 @@ function fakeDb(tables: Record<string, Row[]>) {
         filters.push((row) => values.includes(row[columnOf(column)]))
         return builder
       },
+      like(column: string, pattern: string) {
+        // Traduz só o que a busca legada usa: `\_` literal seguido de `%`.
+        const regex = new RegExp(
+          '^' + pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\_/g, '_').replace(/%$/, '.*') + '$',
+        )
+        filters.push((row) => regex.test(String(row[columnOf(column)] ?? '')))
+        return builder
+      },
       lt(column: string, value: string) {
         filters.push((row) => String(row[column]) < value)
         return builder
@@ -158,6 +166,61 @@ describe('applyMessageStatus', () => {
     const tables: Record<string, Row[]> = { messages: [] }
     await applyMessageStatus(fakeDb(tables), 'acc-1', status({ status: 'deleted' }))
     expect(tables.pending_message_statuses).toBeUndefined()
+  })
+})
+
+describe('ack de mensagem de grupo gravada antes da normalização (24/11/2026)', () => {
+  const GRUPO = '5511971415149-1593719147@g.us'
+  const STANZA = 'true_' + GRUPO + '_3EB0C2C90EF17FD9D02D07'
+  // Formato antigo: o quarto segmento é o participante.
+  const ID_ANTIGO = STANZA + '_5516996066156@c.us'
+
+  it('encontra a linha antiga quando o ack chega com o id normalizado', async () => {
+    // Antes desta tolerância o ack não casava, a mensagem ficava presa em
+    // `sent` e o status ia para `pending_message_statuses`.
+    const tables = {
+      messages: [message({ message_id: ID_ANTIGO })],
+    }
+    const advanced = await applyMessageStatus(fakeDb(tables), 'acc-1', status({ wamid: STANZA }))
+    expect(advanced).toHaveLength(1)
+    expect(tables.messages[0].status).toBe('delivered')
+  })
+
+  it('avança as duas linhas quando a duplicata ainda existe', async () => {
+    const tables = {
+      messages: [
+        message({ id: 'm-send', message_id: ID_ANTIGO }),
+        message({ id: 'm-eco', message_id: STANZA + '_39788627423277@lid' }),
+      ],
+    }
+    const advanced = await applyMessageStatus(fakeDb(tables), 'acc-1', status({ wamid: STANZA }))
+    expect(advanced).toHaveLength(2)
+    expect(tables.messages.every((r) => r.status === 'delivered')).toBe(true)
+  })
+
+  it('NÃO faz busca por prefixo em conversa individual', async () => {
+    // Individual sempre teve id estável; um prefixo ali casaria telefones
+    // que só compartilham o começo.
+    const tables = {
+      messages: [message({ message_id: 'true_5516982594845@c.us_3EB04383E41021006D20CF_X' })],
+    }
+    const advanced = await applyMessageStatus(
+      fakeDb(tables),
+      'acc-1',
+      status({ wamid: 'true_5516982594845@c.us_3EB04383E41021006D20CF' }),
+    )
+    expect(advanced).toEqual([])
+    expect(tables.messages[0].status).toBe('sent')
+  })
+
+  it('o `_` do padrão é literal, não curinga', async () => {
+    // Se o `_` do LIKE não fosse escapado, este id (mesmo prefixo, outro
+    // separador) casaria por engano.
+    const tables = {
+      messages: [message({ message_id: STANZA + 'X_5516996066156@c.us' })],
+    }
+    const advanced = await applyMessageStatus(fakeDb(tables), 'acc-1', status({ wamid: STANZA }))
+    expect(advanced).toEqual([])
   })
 })
 

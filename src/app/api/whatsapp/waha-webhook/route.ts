@@ -26,6 +26,7 @@ import {
 import { fetchGroupName } from '@/adapto/whatsapp-groups/server'
 import { contactIdForFromMe, isLid } from '@/adapto/whatsapp-groups/from-me'
 import { messageAuthorFrom } from '@/adapto/whatsapp-groups/author'
+import { stanzaMessageId } from '@/adapto/whatsapp-groups/message-key'
 
 /**
  * WAHA → CRM bridge.
@@ -217,7 +218,11 @@ function buildMetaMessage(
 ): Record<string, unknown> | null {
   const base = {
     from: phone,
-    id: payload.id!,
+    // Chave sem o segmento de participante: o `payload.id` de grupo carrega
+    // um quarto segmento (telefone ou LID de quem enviou) que muda entre os
+    // caminhos e entre versões do WAHA, e fazia a mesma mensagem virar duas
+    // linhas. Ver `@/adapto/whatsapp-groups/message-key`.
+    id: stanzaMessageId(payload.id!),
     timestamp: String(payload.timestamp ?? Math.floor(Date.now() / 1000)),
     ...(payload.replyTo?.id ? { context: { id: payload.replyTo.id } } : {}),
   }
@@ -365,7 +370,9 @@ async function toMetaBody(event: WahaEvent): Promise<Record<string, unknown> | n
     return wrap({
       statuses: [
         {
-          id: payload.id,
+          // Mesma normalização do `id` da mensagem: o ack precisa casar com
+          // a linha gravada pelo envio, que tem o stanza sem participante.
+          id: stanzaMessageId(payload.id),
           status,
           timestamp: String(payload.timestamp ?? Math.floor(Date.now() / 1000)),
           recipient_id: phone,
@@ -513,7 +520,7 @@ async function toMetaBody(event: WahaEvent): Promise<Record<string, unknown> | n
       messages: [
         {
           from: phone,
-          id: payload.id,
+          id: stanzaMessageId(payload.id ?? ''),
           timestamp: String(payload.timestamp ?? Math.floor(Date.now() / 1000)),
           type: 'reaction',
           reaction: { message_id: target, emoji: payload.reaction?.text ?? '' },

@@ -22,6 +22,7 @@ import {
   pollPayloadFor,
   type WahaInteractiveMode,
 } from '@/adapto/waha-interactive/strategy'
+import { stanzaMessageId } from '@/adapto/whatsapp-groups/message-key'
 
 export type { WahaInteractiveMode }
 
@@ -131,7 +132,10 @@ export async function wahaSendText(args: {
       ? { mentions: args.mentions }
       : {}),
   })
-  return { messageId: extractMessageId(data) }
+  // Em grupo o WAHA pode devolver o id com um quarto segmento (o
+  // participante), enquanto o eco do webhook traz outro. Reduzir ao stanza
+  // nos dois caminhos é o que impede a mesma mensagem de virar duas linhas.
+  return { messageId: stanzaMessageId(extractMessageId(data)) }
 }
 
 export async function wahaSendMedia(args: {
@@ -161,7 +165,7 @@ export async function wahaSendMedia(args: {
     ...(args.caption && args.kind !== 'audio' ? { caption: args.caption } : {}),
     ...(args.replyTo ? { reply_to: args.replyTo } : {}),
   })
-  return { messageId: extractMessageId(data) }
+  return { messageId: stanzaMessageId(extractMessageId(data)) }
 }
 
 function guessMimeType(link: string, kind: string): string {
@@ -270,7 +274,7 @@ async function sendInteractiveWithFallback(
     try {
       if (strategy === 'native') {
         const data = await native()
-        return { messageId: extractMessageId(data) }
+        return { messageId: stanzaMessageId(extractMessageId(data)) }
       }
 
       // strategy === 'poll'
@@ -285,7 +289,7 @@ async function sendInteractiveWithFallback(
         poll: { name: poll.name, options: poll.options, multipleAnswers: false },
         ...(base.replyTo ? { reply_to: base.replyTo } : {}),
       })
-      return { messageId: extractMessageId(data) }
+      return { messageId: stanzaMessageId(extractMessageId(data)) }
     } catch (err) {
       if (!(err instanceof WahaApiError)) throw err
       lastError = err

@@ -37,6 +37,22 @@ interface PendingStatusRow {
 
 export const PENDING_STATUS_TTL_MS = 24 * 60 * 60 * 1000
 
+/**
+ * True para um id de mensagem de grupo no formato `<fromMe>_<jid@g.us>_<stanza>`.
+ *
+ * Só esses ganham a busca tolerante abaixo: em conversa individual o id
+ * sempre foi estável e não existe "linha antiga com sufixo" a encontrar.
+ */
+function isGroupStanzaId(wamid: string): boolean {
+  const parts = wamid.split('_')
+  return parts.length === 3 && parts[1]?.endsWith('@g.us') === true
+}
+
+/** Escapa `\`, `%` e `_` para uso em LIKE — o `_` sozinho é curinga. */
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (char) => `\\${char}`)
+}
+
 async function findAccountMessages(
   db: SupabaseClient,
   accountId: string,
@@ -52,7 +68,30 @@ async function findAccountMessages(
     console.error('[message-status] message lookup failed:', error.message)
     return null
   }
-  return (data ?? []) as AccountMessage[]
+  const rows = (data ?? []) as AccountMessage[]
+  if (rows.length > 0 || !isGroupStanzaId(wamid)) return rows
+
+  // Linhas gravadas antes de 24/11/2026 carregam um quarto segmento com o
+  // participante (`…_<stanza>_5516996066156@c.us`), e nunca mais seriam
+  // encontradas por igualdade depois que o id passou a ser normalizado
+  // para o stanza. Sem esta busca tolerante, o ack dessas mensagens fica
+  // parqueado para sempre e elas travam em `sent`.
+  // Ver `@/adapto/whatsapp-groups/message-key`.
+  const { data: legacy, error: legacyError } = await db
+    .from('messages')
+    .select('id, conversation_id, status, conversations!inner(account_id)')
+    .like('message_id', `${escapeLike(wamid)}\\_%`)
+    .eq('conversations.account_id', accountId)
+
+  if (legacyError) {
+    // Devolver vazio (e não `rows`) para o chamador parquear o status em vez
+    // de aplicá-lo: o parqueado é reaplicado quando o envio terminar, ao
+    // passo que um ack dado como aplicado sem ter encontrado a linha não
+    // volta mais.
+    console.error('[message-status] legacy id lookup failed:', legacyError.message)
+    return []
+  }
+  return (legacy ?? []) as AccountMessage[]
 }
 
 async function advanceMessages(
