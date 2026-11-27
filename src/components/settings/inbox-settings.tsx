@@ -19,6 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { SettingsPanelHead } from "./settings-panel-head";
+import { WaitingRuleCard } from "@/adapto/dashboard/waiting-rule-card";
 
 export function InboxSettings() {
   const { accountId, canEditSettings, profileLoading } = useAuth();
@@ -73,7 +74,8 @@ export function InboxSettings() {
   return (
     <section className="max-w-2xl animate-in fade-in-50 duration-200">
       <SettingsPanelHead title={t("title")} description={t("description")} />
-      <Card>
+      <div className="space-y-4">
+        <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-foreground">
             <Timer className="size-4 text-primary" />
@@ -124,6 +126,8 @@ export function InboxSettings() {
           )}
         </CardContent>
       </Card>
+        <WaitingRuleCard />
+      </div>
     </section>
   );
 }

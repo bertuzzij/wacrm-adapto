@@ -2203,7 +2203,20 @@
       "saving": "Guardando...",
       "saveFailed": "No se pudo guardar el objetivo de tiempo de respuesta",
       "saveSuccess": "Objetivo de tiempo de respuesta actualizado",
-      "loadFailed": "No se pudo cargar el objetivo de tiempo de respuesta"
+      "loadFailed": "No se pudo cargar el objetivo de tiempo de respuesta",
+      "waitingRule": {
+        "title": "Regla de \"Esperando respuesta\" en el panel",
+        "description": "Define qué conversaciones cuentan en el contador y la cola de respuestas del panel.",
+        "enabledLabel": "Solo conversaciones no leídas (recomendado para soporte continuo)",
+        "disabledLabel": "Todas las conversaciones abiertas cuyo último mensaje es del cliente",
+        "hint": "Ideal cuando el equipo no cierra conversaciones: al abrir la conversación en la bandeja, sale de la cola del panel.",
+        "adminOnlyHint": "Solo los administradores de la cuenta pueden cambiar esta regla.",
+        "save": "Guardar",
+        "saving": "Guardando...",
+        "saveSuccess": "Regla de cola del panel actualizada",
+        "saveFailed": "No se pudo guardar la regla de cola",
+        "loadFailed": "No se pudo cargar la regla de cola"
+      }
     },
     "aiConfig": {
       "title": "Configuración del agente",

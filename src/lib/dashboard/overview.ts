@@ -147,6 +147,8 @@ export interface DashboardOverview {
   previousStart: string
   previousEnd: string
   replyTargetMinutes: number
+  enforceMessagingWindow?: boolean
+  waitingOnlyUnread?: boolean
   attention: OverviewAttention
   replies: OverviewReplies
   volume: OverviewVolume

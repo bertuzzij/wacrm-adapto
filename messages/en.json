@@ -2203,7 +2203,20 @@
       "saving": "Saving...",
       "saveFailed": "Couldn't save the reply time target",
       "saveSuccess": "Reply time target updated",
-      "loadFailed": "Couldn't load the reply time target"
+      "loadFailed": "Couldn't load the reply time target",
+      "waitingRule": {
+        "title": "Dashboard \"Awaiting reply\" rule",
+        "description": "Choose which conversations count in the dashboard counter and reply queue.",
+        "enabledLabel": "Unread conversations only (recommended for ongoing support)",
+        "disabledLabel": "All open conversations where the customer spoke last",
+        "hint": "Best when your team keeps conversations open: opening a conversation in the inbox clears it from the dashboard queue.",
+        "adminOnlyHint": "Only account admins can change this rule.",
+        "save": "Save",
+        "saving": "Saving...",
+        "saveSuccess": "Dashboard queue rule updated",
+        "saveFailed": "Couldn't save the dashboard queue rule",
+        "loadFailed": "Couldn't load the dashboard queue rule"
+      }
     },
     "aiConfig": {
       "title": "Agent setup",

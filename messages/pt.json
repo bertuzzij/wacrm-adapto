@@ -2203,7 +2203,20 @@
       "saving": "Salvando...",
       "saveFailed": "Não foi possível salvar a meta de tempo de resposta",
       "saveSuccess": "Meta de tempo de resposta atualizada",
-      "loadFailed": "Não foi possível carregar a meta de tempo de resposta"
+      "loadFailed": "Não foi possível carregar a meta de tempo de resposta",
+      "waitingRule": {
+        "title": "Regra de \"Aguardando resposta\" no painel",
+        "description": "Define quais conversas entram no contador e na fila de respostas do painel.",
+        "enabledLabel": "Apenas conversas não lidas (recomendado para suporte contínuo)",
+        "disabledLabel": "Todas as conversas abertas cuja última mensagem é do cliente",
+        "hint": "Ideal quando a equipe não fecha conversas: ao abrir a conversa na caixa de entrada, ela sai da fila do painel.",
+        "adminOnlyHint": "Somente administradores da conta podem alterar esta regra.",
+        "save": "Salvar",
+        "saving": "Salvando...",
+        "saveSuccess": "Regra de fila do painel atualizada",
+        "saveFailed": "Não foi possível salvar a regra de fila",
+        "loadFailed": "Não foi possível carregar a regra de fila"
+      }
     },
     "aiConfig": {
       "title": "Configuração do agente",

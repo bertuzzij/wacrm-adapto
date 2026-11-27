@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl'
 import type { DashboardOverview } from '@/lib/dashboard/overview'
 import { minutesBetween } from '@/lib/dashboard/overview'
 import { cn } from '@/lib/utils'
+import { showWindowClosingCard, waitingQueueHref } from '@/adapto/dashboard/dashboard-rules'
 import { FailedMessagesDialog } from './failed-messages-dialog'
 import { Skeleton } from './skeleton'
 import { useFormatDuration } from './use-format-duration'
@@ -79,10 +80,16 @@ export function AttentionRow({
 
   const a = data.attention
   const oldest = a.oldestWaitingSince ? formatDuration(minutesBetween(a.oldestWaitingSince, now)) : null
+  const showWindow = showWindowClosingCard(data.enforceMessagingWindow)
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <Link href="/inbox?filter=waiting" className={TILE_CLASS}>
+    <div
+      className={cn(
+        'grid grid-cols-1 gap-3',
+        showWindow ? 'sm:grid-cols-2 xl:grid-cols-4' : 'sm:grid-cols-3',
+      )}
+    >
+      <Link href={waitingQueueHref(data.waitingOnlyUnread)} className={TILE_CLASS}>
         <TileBody
           icon={MessageSquare}
           tone={a.waitingOverTarget > 0 ? 'critical' : a.waiting > 0 ? 'warning' : 'calm'}
@@ -104,15 +111,17 @@ export function AttentionRow({
           meta={t('onlineNow', { count: onlineCount })}
         />
       </Link>
-      <Link href="/inbox?filter=expiring" className={TILE_CLASS}>
-        <TileBody
-          icon={Clock}
-          tone={a.windowsClosing > 0 ? 'serious' : 'calm'}
-          value={a.windowsClosing}
-          label={t('closing')}
-          meta={t('closingMeta')}
-        />
-      </Link>
+      {showWindow && (
+        <Link href="/inbox?filter=expiring" className={TILE_CLASS}>
+          <TileBody
+            icon={Clock}
+            tone={a.windowsClosing > 0 ? 'serious' : 'calm'}
+            value={a.windowsClosing}
+            label={t('closing')}
+            meta={t('closingMeta')}
+          />
+        </Link>
+      )}
       <button type="button" className={TILE_CLASS} onClick={() => setFailedOpen(true)}>
         <TileBody
           icon={AlertTriangle}

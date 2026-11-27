@@ -21,6 +21,7 @@ import {
   type DashboardOverview,
 } from '@/lib/dashboard/overview'
 import { cn } from '@/lib/utils'
+import { shouldShowQueueWindowBadge, waitingQueueHref } from '@/adapto/dashboard/dashboard-rules'
 import { EmptyState } from './empty-state'
 import { initialsOf } from './initials'
 import { Skeleton } from './skeleton'
@@ -45,7 +46,7 @@ export function ReplyQueueCard({ data, now }: { data: DashboardOverview | null; 
         <CardTitle>{t('title')}</CardTitle>
         <CardDescription>{t('description')}</CardDescription>
         <CardAction>
-          <Link href="/inbox?filter=waiting" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>
+          <Link href={waitingQueueHref(data?.waitingOnlyUnread)} className={buttonVariants({ variant: 'ghost', size: 'sm' })}>
             {t('openInbox')}
           </Link>
         </CardAction>
@@ -79,7 +80,7 @@ export function ReplyQueueCard({ data, now }: { data: DashboardOverview | null; 
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-foreground">{name}</p>
                       <p className="truncate text-xs text-muted-foreground">{q.preview || t('noPreview')}</p>
-                      {windowLeft > 0 && windowLeft <= WINDOW_WARNING_MINUTES ? (
+                      {shouldShowQueueWindowBadge(data.enforceMessagingWindow, windowLeft, WINDOW_WARNING_MINUTES) ? (
                         <Badge variant="outline" className="mt-1 border-status-serious/40 text-status-serious">
                           {t('windowLeft', { time: formatDuration(windowLeft) })}
                         </Badge>
