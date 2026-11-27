@@ -414,7 +414,8 @@
       "networkError": "네트워크 오류",
       "documentFallback": "문서",
       "you": "나",
-      "retryConfirm": "이 메시지를 다시 보낼까요? 이미 도착했다면 고객이 두 번 받게 됩니다."
+      "retryConfirm": "이 메시지를 다시 보낼까요? 이미 도착했다면 고객이 두 번 받게 됩니다.",
+      "scrollToBottom": "맨 아래로 이동"
     },
     "sessionTimer": {
       "expired": "만료됨",

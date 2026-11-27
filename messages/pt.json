@@ -414,7 +414,8 @@
       "networkError": "erro de rede",
       "documentFallback": "Documento",
       "you": "Você",
-      "retryConfirm": "Reenviar esta mensagem? Se ela chegou ao cliente, ele receberá de novo."
+      "retryConfirm": "Reenviar esta mensagem? Se ela chegou ao cliente, ele receberá de novo.",
+      "scrollToBottom": "Ir para o final da conversa"
     },
     "sessionTimer": {
       "expired": "Expirada",

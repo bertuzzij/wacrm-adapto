@@ -64,6 +64,7 @@ import { contactHandle } from "@/lib/whatsapp/wa-identity";
 import { resolveAssignmentResult } from "@/lib/inbox/assignment";
 import { resolveMessagingWindow } from "@/adapto/messaging-window/config";
 import { failedDraftFrom, retryNeedsConfirm } from "@/adapto/inbox/retry";
+import { ScrollToBottomButton } from "@/adapto/inbox/scroll-to-bottom-button";
 import { useMessagingWindowEnabled } from "@/adapto/messaging-window/use-messaging-window";
 import {
   businessReactionOn,
@@ -610,6 +611,7 @@ export function MessageThread({
 
   // Auto-scroll to bottom on new messages
   useLayoutEffect(() => {
+    if (loading) return;
     const el = scrollRef.current;
     if (!el) return;
     const anchor = scrollAnchorRef.current;
@@ -619,7 +621,7 @@ export function MessageThread({
       return;
     }
     el.scrollTop = el.scrollHeight;
-  }, [messages]);
+  }, [messages, loading]);
 
   // Reenvio de mensagem que falhou.
   //
@@ -1277,7 +1279,8 @@ export function MessageThread({
       </div>
 
       {/* Messages Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -1378,6 +1381,13 @@ export function MessageThread({
             ))}
           </div>
         )}
+        </div>
+        <ScrollToBottomButton
+          scrollRef={scrollRef}
+          conversationId={conversation.id}
+          messageCount={messages.length}
+          loading={loading}
+        />
       </div>
 
       {/* AI auto-reply banner — take over an active bot, or resume it

@@ -414,7 +414,8 @@
       "networkError": "network error",
       "documentFallback": "Document",
       "you": "You",
-      "retryConfirm": "Resend this message? If it already reached the customer, they will get it twice."
+      "retryConfirm": "Resend this message? If it already reached the customer, they will get it twice.",
+      "scrollToBottom": "Scroll to bottom"
     },
     "sessionTimer": {
       "expired": "Expired",
