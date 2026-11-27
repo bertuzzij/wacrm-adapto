@@ -68,6 +68,9 @@ import {
   inboxConversationHref,
   requestStartConversation,
 } from '@/adapto/inbox/start-conversation';
+import { ContactAvatar } from '@/adapto/contacts/contact-avatar';
+import { ContactNameFilterBar } from '@/adapto/contacts/name-filter-bar';
+import type { ContactNameFilter } from '@/adapto/contacts/name-filter';
 
 const PAGE_SIZE = 25;
 
@@ -90,6 +93,7 @@ export default function ContactsPage() {
   const [totalCount, setTotalCount] = useState(0);
   // Tag filter — contacts shown must have ANY of these tags (OR).
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [nameFilter, setNameFilter] = useState<ContactNameFilter>('all');
 
   // Modals
   const [formOpen, setFormOpen] = useState(false);
@@ -148,7 +152,25 @@ export default function ContactsPage() {
     let count: number;
     let countIsExact = true;
 
-    if (selectedTagIds.length > 0) {
+    if (nameFilter !== 'all') {
+      const { data, error } = await supabase.rpc('filter_contacts_adapto', {
+        p_name_kind: nameFilter,
+        p_tag_ids: selectedTagIds.length > 0 ? selectedTagIds : null,
+        p_search: contactSearchPattern(term),
+        p_limit: PAGE_SIZE,
+        p_offset: from,
+      });
+      if (seq !== fetchSeq.current) return; // superseded by a newer fetch
+      if (error) {
+        toast.error(t('toastFailedLoad'));
+        setLoading(false);
+        return;
+      }
+      const rows = (data ?? []) as { contact: Contact; total_count: number }[];
+      contactRows = rows.map((r) => r.contact);
+      count = rows.length > 0 ? Number(rows[0].total_count) : 0;
+      countIsExact = rows.length > 0;
+    } else if (selectedTagIds.length > 0) {
       // Tag filter active — resolve it server-side (join + distinct +
       // windowed total count + pagination) so a tag covering many
       // contacts can't silently truncate the result or overflow an IN
@@ -234,7 +256,7 @@ export default function ContactsPage() {
 
     setContacts(enriched);
     setLoading(false);
-  }, [supabase, page, search, selectedTagIds, tagsMap, t]);
+  }, [supabase, page, search, selectedTagIds, nameFilter, tagsMap, t]);
 
   // Load-once-on-mount-ish data fetches. Each setter inside runs
   // inside an async promise completion (Supabase await), not
@@ -363,7 +385,8 @@ export default function ContactsPage() {
   const allTags = Object.values(tagsMap).sort((a, b) =>
     a.name.localeCompare(b.name)
   );
-  const hasActiveFilters = search.trim().length > 0 || selectedTagIds.length > 0;
+  const hasActiveFilters =
+    search.trim().length > 0 || selectedTagIds.length > 0 || nameFilter !== 'all';
 
   function toggleTagFilter(tagId: string) {
     setSelectedTagIds((prev) =>
@@ -500,6 +523,14 @@ export default function ContactsPage() {
               )}
             </PopoverContent>
           </Popover>
+
+          <ContactNameFilterBar
+            value={nameFilter}
+            onChange={(next) => {
+              setNameFilter(next);
+              setPage(0);
+            }}
+          />
         </div>
 
         {/* Active tag-filter chips */}
@@ -581,6 +612,7 @@ export default function ContactsPage() {
                   aria-label={t('selectAllOnPage')}
                 />
               </TableHead>
+              <TableHead className="text-muted-foreground w-14">{t('tableColumns.avatar')}</TableHead>
               <TableHead className="text-muted-foreground">{t('tableColumns.name')}</TableHead>
               <TableHead className="text-muted-foreground">{t('tableColumns.phone')}</TableHead>
               <TableHead className="text-muted-foreground hidden md:table-cell">{t('tableColumns.email')}</TableHead>
@@ -593,7 +625,7 @@ export default function ContactsPage() {
           <TableBody>
             {loading ? (
               <TableRow className="border-border">
-                <TableCell colSpan={8} className="text-center py-12">
+                <TableCell colSpan={9} className="text-center py-12">
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="size-6 animate-spin text-primary" />
                     <p className="text-sm text-muted-foreground">{t('loading')}</p>
@@ -602,7 +634,7 @@ export default function ContactsPage() {
               </TableRow>
             ) : contacts.length === 0 ? (
               <TableRow className="border-border">
-                <TableCell colSpan={8} className="text-center py-12">
+                <TableCell colSpan={9} className="text-center py-12">
                   <div className="flex flex-col items-center gap-2">
                     <Users className="size-8 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">
@@ -638,6 +670,13 @@ export default function ContactsPage() {
                       checked={selected.has(contact.id)}
                       onCheckedChange={() => toggleSelect(contact.id)}
                       aria-label={t('selectContact', { name: contact.name || contact.phone })}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <ContactAvatar
+                      name={contact.name}
+                      phone={contact.phone}
+                      avatarUrl={contact.avatar_url}
                     />
                   </TableCell>
                   <TableCell className="text-foreground font-medium">

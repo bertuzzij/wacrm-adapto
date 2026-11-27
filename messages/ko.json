@@ -602,12 +602,19 @@
       "addContactBtn": "연락처 추가",
       "searchPlaceholder": "이름, 전화번호, 이메일로 검색...",
       "filterByTags": "태그로 필터링",
+      "nameFilter": {
+        "label": "이름 유형으로 필터링",
+        "all": "전체",
+        "named": "이름 있음",
+        "phoneOnly": "번호만 있음"
+      },
       "clearAll": "모두 지우기",
       "noTagsYet": "아직 태그가 없습니다.",
       "selectedCount": "{count}개 선택됨",
       "clearSelection": "지우기",
       "deleteSelected": "선택 항목 삭제",
       "tableColumns": {
+        "avatar": "아바타",
         "name": "이름",
         "phone": "전화번호",
         "email": "이메일",

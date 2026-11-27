@@ -602,12 +602,19 @@
       "addContactBtn": "Add Contact",
       "searchPlaceholder": "Search by name, phone, or email...",
       "filterByTags": "Filter by tags",
+      "nameFilter": {
+        "label": "Filter by name type",
+        "all": "All",
+        "named": "Named",
+        "phoneOnly": "Number only"
+      },
       "clearAll": "Clear all",
       "noTagsYet": "No tags yet.",
       "selectedCount": "{count} selected",
       "clearSelection": "Clear",
       "deleteSelected": "Delete selected",
       "tableColumns": {
+        "avatar": "Avatar",
         "name": "Name",
         "phone": "Phone",
         "email": "Email",
