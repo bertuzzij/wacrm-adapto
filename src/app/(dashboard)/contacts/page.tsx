@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import type { Contact, Tag, ContactTag } from '@/types';
@@ -40,6 +41,7 @@ import {
   Plus,
   Upload,
   MoreHorizontal,
+  MessageSquarePlus,
   Pencil,
   Trash2,
   Loader2,
@@ -62,6 +64,10 @@ import {
   contactSearchPattern,
 } from '@/lib/contacts/search-filter';
 import { pageAfterRangeError, pageAfterShrink } from '@/lib/contacts/page-bounds';
+import {
+  inboxConversationHref,
+  requestStartConversation,
+} from '@/adapto/inbox/start-conversation';
 
 const PAGE_SIZE = 25;
 
@@ -72,6 +78,7 @@ interface ContactWithTags extends Contact {
 export default function ContactsPage() {
   const t = useTranslations('Contacts.page');
   const tGate = useTranslations('GatedButton');
+  const router = useRouter();
   const supabase = createClient();
   const canEdit = useCan('send-messages');
   const canEditSettings = useCan('edit-settings');
@@ -95,6 +102,7 @@ export default function ContactsPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Contact | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [startingContactId, setStartingContactId] = useState<string | null>(null);
 
   // Bulk selection (page-scoped — only the loaded rows are selectable)
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -266,6 +274,19 @@ export default function ContactsPage() {
   function confirmDelete(contact: Contact) {
     setDeleteTarget(contact);
     setDeleteConfirmOpen(true);
+  }
+
+  async function handleStartConversation(contact: Contact) {
+    if (startingContactId) return;
+    setStartingContactId(contact.id);
+    try {
+      const { conversationId } = await requestStartConversation(contact.id);
+      router.push(inboxConversationHref(conversationId));
+    } catch {
+      toast.error(t('toastStartConversationFailed'));
+    } finally {
+      setStartingContactId(null);
+    }
   }
 
   async function handleDelete() {
@@ -566,7 +587,7 @@ export default function ContactsPage() {
               <TableHead className="text-muted-foreground hidden lg:table-cell">{t('tableColumns.company')}</TableHead>
               <TableHead className="text-muted-foreground hidden md:table-cell">{t('tableColumns.tags')}</TableHead>
               <TableHead className="text-muted-foreground hidden lg:table-cell">{t('tableColumns.createdAt')}</TableHead>
-              <TableHead className="text-muted-foreground w-12" />
+              <TableHead className="text-muted-foreground w-20" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -663,47 +684,69 @@ export default function ContactsPage() {
                       year: 'numeric',
                     })}
                   </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-muted-foreground hover:text-foreground"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        }
-                      >
-                        <MoreHorizontal className="size-4" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
-                        className="bg-popover border-border"
-                      >
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEditForm(contact);
-                          }}
-                          className="text-popover-foreground focus:bg-muted focus:text-foreground"
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1">
+                      {canEdit && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          disabled={startingContactId === contact.id}
+                          aria-label={t('startConversationAction')}
+                          title={t('startConversationAction')}
+                          className="text-muted-foreground hover:text-primary"
+                          onClick={() => void handleStartConversation(contact)}
                         >
-                          <Pencil className="size-4" />
-                          {t('editAction')}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-border" />
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            confirmDelete(contact);
-                          }}
+                          {startingContactId === contact.id ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <MessageSquarePlus className="size-4" />
+                          )}
+                        </Button>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-muted-foreground hover:text-foreground"
+                            />
+                          }
                         >
-                          <Trash2 className="size-4" />
-                          {t('deleteAction')}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          <MoreHorizontal className="size-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="bg-popover border-border"
+                        >
+                          {canEdit && (
+                            <DropdownMenuItem
+                              disabled={startingContactId === contact.id}
+                              onClick={() => void handleStartConversation(contact)}
+                              className="text-popover-foreground focus:bg-muted focus:text-foreground"
+                            >
+                              <MessageSquarePlus className="size-4" />
+                              {t('startConversationAction')}
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            onClick={() => openEditForm(contact)}
+                            className="text-popover-foreground focus:bg-muted focus:text-foreground"
+                          >
+                            <Pencil className="size-4" />
+                            {t('editAction')}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-border" />
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => confirmDelete(contact)}
+                          >
+                            <Trash2 className="size-4" />
+                            {t('deleteAction')}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

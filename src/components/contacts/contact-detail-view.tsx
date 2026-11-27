@@ -44,6 +44,7 @@ import { useTranslations } from 'next-intl';
 import { planCustomValueWrites } from '@/lib/contacts/custom-value-writes';
 import { contactHandle } from '@/lib/whatsapp/wa-identity';
 import { parseInternationalPhone } from '@/lib/whatsapp/phone-utils';
+import { StartConversationButton } from '@/adapto/inbox/start-conversation-button';
 
 interface ContactDetailViewProps {
   open: boolean;
@@ -445,12 +446,17 @@ export function ContactDetailView({
                   </div>
                 </div>
               </div>
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <StartConversationButton
+                  contactId={contact.id}
+                  onStarted={() => onOpenChange(false)}
+                />
                 <Button
                   size="sm"
+                  variant="outline"
                   onClick={() => setTemplatePickerOpen(true)}
                   disabled={sendingTemplate}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="border-border text-foreground hover:bg-muted"
                 >
                   {sendingTemplate ? (
                     <Loader2 className="size-4 animate-spin" />

@@ -620,6 +620,8 @@
       "noContactsYet": "Aún no hay contactos.",
       "addFirstContact": "Agrega tu primer contacto",
       "unnamed": "Sin nombre",
+      "startConversationAction": "Iniciar conversación",
+      "toastStartConversationFailed": "No se pudo iniciar la conversación",
       "editAction": "Editar",
       "deleteAction": "Eliminar",
       "showingPagination": "Mostrando {start}-{end} de {total}",
@@ -721,6 +723,8 @@
         "clickTagDesc": "Haz clic en una etiqueta para agregarla o quitarla de este contacto.",
         "noTagsAvailable": "No hay etiquetas disponibles. Crea etiquetas en Configuración."
       },
+      "startConversationBtn": "Iniciar conversación",
+      "toastStartConversationFailed": "No se pudo iniciar la conversación",
       "sendTemplateBtn": "Enviar plantilla",
       "saveChangesBtn": "Guardar cambios",
       "saveCustomFieldsBtn": "Guardar campos personalizados",

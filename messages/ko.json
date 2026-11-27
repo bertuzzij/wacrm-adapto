@@ -620,6 +620,8 @@
       "noContactsYet": "아직 연락처가 없습니다.",
       "addFirstContact": "첫 연락처 추가하기",
       "unnamed": "이름 없음",
+      "startConversationAction": "대화 시작",
+      "toastStartConversationFailed": "대화를 시작하지 못했습니다",
       "editAction": "수정",
       "deleteAction": "삭제",
       "showingPagination": "전체 {total}개 중 {start}-{end}",
@@ -721,6 +723,8 @@
         "clickTagDesc": "태그를 클릭해 이 연락처에 추가하거나 제거하세요.",
         "noTagsAvailable": "사용 가능한 태그가 없습니다. 설정에서 태그를 만드세요."
       },
+      "startConversationBtn": "대화 시작",
+      "toastStartConversationFailed": "대화를 시작하지 못했습니다",
       "sendTemplateBtn": "템플릿 보내기",
       "saveChangesBtn": "변경 사항 저장",
       "saveCustomFieldsBtn": "커스텀 필드 저장",
