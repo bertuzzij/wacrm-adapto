@@ -40,7 +40,7 @@ export const STORAGE_KEY = "wacrm.theme";
  * Persisted under its own localStorage key so it composes freely
  * with the accent choice (you can run Violet-light or Violet-dark).
  */
-export const MODES = ["light", "dark"] as const;
+export const MODES = ["light", "grey", "dark"] as const;
 
 export type Mode = (typeof MODES)[number];
 

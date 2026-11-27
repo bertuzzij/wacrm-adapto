@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 
 import { useTheme } from "@/hooks/use-theme";
 import { DEFAULT_MODE } from "@/lib/themes";
+import { sonnerThemeFor } from "@/adapto/themes/modes";
 
 // Returns false during SSR and the first hydration render, true after —
 // the sanctioned (warning-free, no setState-in-effect) way to diverge
@@ -37,7 +38,7 @@ export function ThemedToaster() {
   const isClient = useIsClient();
   return (
     <Toaster
-      theme={isClient ? mode : DEFAULT_MODE}
+      theme={sonnerThemeFor(isClient ? mode : DEFAULT_MODE)}
       position="top-right"
       toastOptions={{
         style: {

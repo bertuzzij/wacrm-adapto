@@ -19,6 +19,7 @@ import {
   type Mode,
   type ThemeId,
 } from "@/lib/themes";
+import { nextMode } from "@/adapto/themes/modes";
 
 /**
  * ThemeProvider — wraps the whole app, owns the two theming axes:
@@ -106,7 +107,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleMode = useCallback(() => {
-    setMode(mode === "dark" ? "light" : "dark");
+    setMode(nextMode(mode));
   }, [mode, setMode]);
 
   // Sync from other tabs — change theme or mode in tab A, tab B

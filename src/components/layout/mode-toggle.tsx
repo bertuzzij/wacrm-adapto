@@ -1,8 +1,9 @@
 "use client";
 
-import { Moon, Sun } from "lucide-react";
+import { Contrast, Moon, Sun } from "lucide-react";
 
 import { useTheme } from "@/hooks/use-theme";
+import { nextMode } from "@/adapto/themes/modes";
 import { cn } from "@/lib/utils";
 
 import { useTranslations } from "next-intl";
@@ -18,7 +19,7 @@ import { useTranslations } from "next-intl";
 export function ModeToggle({ className }: { className?: string }) {
   const t = useTranslations("ModeToggle");
   const { mode, toggleMode } = useTheme();
-  const goingTo = mode === "dark" ? "light" : "dark";
+  const goingTo = nextMode(mode);
   const switchLabel = t("switchMode", { mode: goingTo });
   
   return (
@@ -34,6 +35,8 @@ export function ModeToggle({ className }: { className?: string }) {
     >
       {mode === "dark" ? (
         <Moon className="h-5 w-5" />
+      ) : mode === "grey" ? (
+        <Contrast className="h-5 w-5" />
       ) : (
         <Sun className="h-5 w-5" />
       )}

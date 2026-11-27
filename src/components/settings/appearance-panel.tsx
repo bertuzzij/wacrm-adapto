@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Moon, Palette, SunMoon, Sun } from "lucide-react";
+import { Check, Contrast, Moon, Palette, SunMoon, Sun } from "lucide-react";
 
 import { useTheme } from "@/hooks/use-theme";
 import { MODES, THEMES, type Mode, type ThemeId } from "@/lib/themes";
@@ -40,7 +40,7 @@ export function AppearancePanel() {
         <div
           role="radiogroup"
           aria-label={t("colorMode")}
-          className="grid max-w-md grid-cols-2 gap-3"
+          className="grid max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3"
         >
           {MODES.map((m) => (
             <ModeCard
@@ -87,8 +87,7 @@ function ModeCard({
   onPick: () => void;
 }) {
   const t = useTranslations("Settings.appearance");
-  const isLight = mode === "light";
-  const Icon = isLight ? Sun : Moon;
+  const Icon = mode === "light" ? Sun : mode === "grey" ? Contrast : Moon;
   return (
     <button
       type="button"

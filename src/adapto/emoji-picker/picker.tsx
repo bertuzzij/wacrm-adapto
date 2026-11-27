@@ -111,7 +111,7 @@ export function EmojiButton({ onPick, disabled }: EmojiButtonProps) {
           </div>
           <EmojiPicker
             onEmojiClick={(data) => onPick(data.emoji)}
-            theme={mode === 'dark' ? 'dark' : 'light'}
+            theme={mode === 'light' ? 'light' : 'dark'}
             emojiStyle="native"
             categories={localizedCategories(locale)}
             searchPlaceHolder={t('search')}
