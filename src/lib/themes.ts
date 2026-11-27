@@ -19,6 +19,7 @@ export const THEME_IDS = [
   "cobalt",
   "amber",
   "rose",
+  "lima-grafite",
 ] as const;
 
 export type ThemeId = (typeof THEME_IDS)[number];
@@ -96,6 +97,12 @@ export const THEMES: ReadonlyArray<ThemeMeta> = [
     name: "Rose",
     tagline: "Bold and modern — D2C, creator-economy, lifestyle.",
     swatch: "oklch(0.645 0.22 16)",
+  },
+  {
+    id: "lima-grafite",
+    name: "Lima Grafite",
+    tagline: "Lima pontual sobre grafite e cinza mineral — destaca filas cheias e não lidas.",
+    swatch: "oklch(0.882 0.18 118)",
   },
 ];
 

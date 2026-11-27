@@ -1,0 +1,81 @@
+/* ============================================================
+ * Tema Adapto: Lima Grafite (`data-theme="lima-grafite"`).
+ *
+ * Superfícies em grafite frio (modo escuro) e cinza mineral (modo
+ * claro) com destaque lima pontual para fazer não-lidas, ações
+ * primárias e fila ativa sobressaírem sem cansar a vista.
+ *
+ * Mantido em `src/adapto/themes/` para evitar conflito com os blocos
+ * de tema do upstream em `src/app/globals.css`.
+ * ============================================================ */
+
+html[data-theme="lima-grafite"],
+html[data-theme="lima-grafite"][data-mode="dark"] {
+  --background: oklch(0.155 0.008 264);
+  --foreground: oklch(0.963 0.009 264);
+  --card: oklch(0.205 0.008 264);
+  --card-2: oklch(0.232 0.008 264);
+  --card-foreground: oklch(0.963 0.009 264);
+  --popover: oklch(0.205 0.008 264);
+  --popover-foreground: oklch(0.963 0.009 264);
+  --secondary: oklch(0.245 0.008 264);
+  --secondary-foreground: oklch(0.963 0.009 264);
+  --muted: oklch(0.245 0.008 264);
+  --muted-foreground: oklch(0.72 0.014 264);
+  --accent: oklch(0.245 0.008 264);
+  --accent-foreground: oklch(0.963 0.009 264);
+  --border: oklch(0.3 0.01 264);
+  --input: oklch(0.3 0.01 264);
+  --sidebar: oklch(0.175 0.008 264);
+  --sidebar-foreground: oklch(0.963 0.009 264);
+  --sidebar-accent: oklch(0.245 0.008 264);
+  --sidebar-accent-foreground: oklch(0.963 0.009 264);
+  --sidebar-border: oklch(0.3 0.01 264);
+
+  --primary: oklch(0.882 0.18 118);
+  --primary-foreground: oklch(0.172 0.021 264);
+  --primary-hover: oklch(0.92 0.175 118);
+  --primary-soft: oklch(0.882 0.18 118 / 0.14);
+  --primary-soft-2: oklch(0.882 0.18 118 / 0.24);
+  --ring: oklch(0.882 0.18 118);
+  --chart-1: oklch(0.882 0.18 118);
+  --chart-2: oklch(0.74 0.12 162);
+  --sidebar-primary: oklch(0.882 0.18 118);
+  --sidebar-primary-foreground: oklch(0.172 0.021 264);
+  --sidebar-ring: oklch(0.882 0.18 118);
+}
+
+html[data-theme="lima-grafite"][data-mode="light"] {
+  --background: oklch(0.955 0.006 264);
+  --foreground: oklch(0.23 0.018 264);
+  --card: oklch(0.985 0.004 264);
+  --card-2: oklch(0.968 0.005 264);
+  --card-foreground: oklch(0.23 0.018 264);
+  --popover: oklch(0.985 0.004 264);
+  --popover-foreground: oklch(0.23 0.018 264);
+  --secondary: oklch(0.935 0.007 264);
+  --secondary-foreground: oklch(0.23 0.018 264);
+  --muted: oklch(0.935 0.007 264);
+  --muted-foreground: oklch(0.45 0.018 264);
+  --accent: oklch(0.93 0.007 264);
+  --accent-foreground: oklch(0.23 0.018 264);
+  --border: oklch(0.88 0.008 264);
+  --input: oklch(0.88 0.008 264);
+  --sidebar: oklch(0.928 0.007 264);
+  --sidebar-foreground: oklch(0.23 0.018 264);
+  --sidebar-accent: oklch(0.9 0.008 264);
+  --sidebar-accent-foreground: oklch(0.23 0.018 264);
+  --sidebar-border: oklch(0.865 0.008 264);
+
+  --primary: oklch(0.46 0.105 116);
+  --primary-foreground: oklch(0.985 0.004 264);
+  --primary-hover: oklch(0.41 0.105 116);
+  --primary-soft: oklch(0.46 0.105 116 / 0.11);
+  --primary-soft-2: oklch(0.46 0.105 116 / 0.2);
+  --ring: oklch(0.46 0.105 116);
+  --chart-1: oklch(0.46 0.105 116);
+  --chart-2: oklch(0.55 0.09 162);
+  --sidebar-primary: oklch(0.46 0.105 116);
+  --sidebar-primary-foreground: oklch(0.985 0.004 264);
+  --sidebar-ring: oklch(0.46 0.105 116);
+}
